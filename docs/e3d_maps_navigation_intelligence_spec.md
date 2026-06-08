@@ -128,6 +128,77 @@ ClickHouse insert/write client for Maps-generated data
 
 ---
 
+## 3.4 V0 Adapter Bootstrap Strategy
+
+The Maps adapter (`maps-v0.1`) does not exist at the start of implementation. Do not block Phase 4 on adapter training.
+
+For v0, use the Qwen base model with the Maps system prompt and agent prompts as-is. The base model plus strong prompting is sufficient to generate NavigationSignals. Those signals — along with their realized outcomes — become the first training dataset for the actual adapter.
+
+Build order for the adapter:
+
+```text
+1. Run base model + prompts for 2–4 weeks in production.
+2. Score predictions using PredictionOutcome jobs.
+3. Export training examples using export_training_examples.py.
+4. Fine-tune Maps adapter from that dataset.
+5. Replace base model calls with adapter calls.
+6. Update adapter field in NavigationSignal records.
+```
+
+Set `adapter: "base-v0"` in NavigationSignal records generated before the adapter exists. Set `adapter: "maps-v0.1"` once the adapter is trained and deployed. This allows training examples to be filtered by adapter version.
+
+---
+
+## 3.5 Prediction Outcome Scoring Rubric
+
+The `score_pending_predictions` job (Phase 9) requires a concrete rubric. The agent alone cannot determine whether a prediction was correct — the job needs a heuristic ground truth.
+
+Use this v1 rubric for `capital_migration` and `destination_prediction` signals:
+
+**Inputs to the scoring job:**
+
+```text
+- The NavigationSignal's origin, destination, time_horizon_hours, and confidence
+- Stories generated after the signal's created_at and within the evaluation window
+- Exchange flow summaries for the same window
+- Stablecoin activity summaries for the same window
+```
+
+**Scoring heuristic:**
+
+| Condition | Score |
+|---|---|
+| Stories with matching origin/destination fired within the window | +0.4 |
+| Exchange flow direction matches predicted flow direction | +0.3 |
+| Stablecoin activity consistent with predicted direction | +0.2 |
+| No contradicting evidence | +0.1 |
+| Contradicting story or flow evidence | -0.3 per source |
+
+Sum to a `prediction_accuracy` float. Cap at 1.0, floor at 0.0.
+
+Set `map_prediction_correct = true` if `prediction_accuracy >= 0.6`.
+
+This rubric is approximate. It will improve as the system accumulates labeled examples. The scoring agent (MAPS-0901) should include the raw evidence and notes so the rubric can be audited and revised.
+
+---
+
+## 3.6 Deferred Signal Types
+
+`narrative_acceleration` and `agent_swarm_formation` are v1.1 signal types.
+
+They require second-derivative reasoning that is harder to prompt reliably without a trained adapter and accumulated signal history.
+
+Include them in `shared_enums.py` so schemas accept them, but do not implement their agent classes in v1. Mark their question queue entries as `enabled: false`.
+
+**Why deferred:**
+
+- `narrative_acceleration` requires comparing current narrative velocity to prior velocity. That comparison requires a historical baseline that does not exist at launch.
+- `agent_swarm_formation` requires detecting coordination across many wallet clusters simultaneously, which requires richer wallet cluster context than the v1 API client provides.
+
+Implement both after the Maps adapter is trained and the system has at least 30 days of signal history.
+
+---
+
 ## 4. No Chicken-and-Egg Rule
 
 There is a potential circular dependency:
@@ -1456,12 +1527,19 @@ training/exports/maps_training_examples_YYYYMMDD.jsonl
   - `get_market_context`
 - Use existing E3D endpoint conventions.
 - Add retries and timeouts.
+- Add a `max_items` parameter to all list-returning methods. Default to a safe limit (e.g. 20 stories, 10 theses) to avoid overflowing the Qwen context window.
+
+**Context window budgeting rule:**
+
+The runner is responsible for assembling context that fits within Qwen's context limit. The API client must not return unbounded result sets. Each agent specifies its own `max_items` needs in its configuration. The runner trims to those limits before building the prompt. If the assembled context exceeds a configurable token budget, the runner drops lower-priority inputs in this order: prior signals, theses, wallet activity, exchange flows, stories (keep most recent).
 
 **Acceptance Criteria:**
 
 - Client can fetch recent stories.
 - Client can fetch recent theses.
 - Missing API responses are handled gracefully.
+- All list methods respect a `max_items` limit.
+- Client does not assemble a context that exceeds the configured token budget.
 
 ---
 
@@ -1509,21 +1587,24 @@ training/exports/maps_training_examples_YYYYMMDD.jsonl
 
 ### Ticket MAPS-0302: Add Maps system prompt
 
+**Status:** Complete. See `prompts/maps_system_prompt.md`.
+
 **Goal:** Define the core behavior of Maps agents.
 
-**Tasks:**
+The system prompt enforces:
 
-- Create `prompts/maps_system_prompt.md`.
-- State that Maps agents are navigators, not traders.
-- Require strict JSON output.
-- Require evidence references.
-- Require confidence values.
-- Prohibit unsupported claims.
+- Navigator framing: Maps agents describe routes, not trading decisions.
+- Strict JSON output only. No markdown, no prose outside the JSON object.
+- Evidence citation: every claim must reference a story ID or thesis ID from the input context.
+- Confidence rules: floor at 0.3 (emit null below), ceiling of 0.9 for exceptional convergence only.
+- Shared vocabulary: signal types, risk levels, market states, and flow labels are enumerated.
+- Null return: agents return null rather than a low-quality signal.
 
 **Acceptance Criteria:**
 
 - Prompt clearly distinguishes observations, predictions, recommendations, and confidence.
 - Prompt instructs agents to return machine-parseable JSON only.
+- All acceptance criteria are met by the existing file.
 
 ---
 
@@ -1556,17 +1637,24 @@ training/exports/maps_training_examples_YYYYMMDD.jsonl
 
 **Goal:** Generate `capital_migration` NavigationSignals.
 
+**Prompt:** Complete. See `prompts/capital_migration_agent.md`.
+
 **Tasks:**
 
-- Create agent file.
-- Create prompt file.
-- Use recent stories/theses/flows as context.
-- Produce `NavigationSignal` JSON.
+- Create `agents/capital_migration_agent.py`.
+- Load system prompt from `prompts/maps_system_prompt.md`.
+- Load agent prompt from `prompts/capital_migration_agent.md`.
+- Assemble context from: recent stories, recent theses, stablecoin activity, exchange flows, wallet cluster activity, prior capital_migration signals, market state summary.
+- Pass context + agent prompt to Qwen via `qwen_client`.
+- Parse and validate the returned JSON against `NavigationSignal` schema.
+- If a `route_predictions` key is present, validate and extract those as `RoutePrediction` objects.
 
 **Acceptance Criteria:**
 
 - Agent produces valid `NavigationSignal` objects.
 - Signal includes origin, destination, confidence, evidence, and time horizon.
+- Agent returns null (not an error) when evidence is insufficient.
+- `RoutePrediction` rows are extracted and returned separately when present.
 
 ---
 
@@ -1677,16 +1765,22 @@ training/exports/maps_training_examples_YYYYMMDD.jsonl
 
 **Goal:** Expose story type meanings to humans and agents.
 
+**Seeding strategy:** `StoryTypeDefinitions` is a slowly-changing reference table, not a live product taxonomy. Seed it once from `db/seed_story_types.py` at deploy time. Update it via a new seed run when story types are added or renamed. Do not build an admin UI for this in v1 — a re-run of the seed script is sufficient.
+
 **Tasks:**
 
 - Add `GET /api/story-types`.
 - Add `GET /api/story-types/:type`.
-- Read from `StoryTypeDefinitions` table or static seed source.
+- Read from `StoryTypeDefinitions` ClickHouse table.
+- Add `db/seed_story_types.py` with definitions for all current E3D story types.
+- Include the `updated_at` timestamp in responses so agents can detect when the taxonomy changed.
 
 **Acceptance Criteria:**
 
 - Story types return human and agent meanings.
 - Related NavigationSignal types are included.
+- Seed script inserts all story types without error on a fresh table.
+- Re-running the seed script does not create duplicates (upsert by `story_type`).
 
 ---
 
