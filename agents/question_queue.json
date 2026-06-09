@@ -1,0 +1,38 @@
+[
+  {
+    "agent": "capital_migration_agent",
+    "question": "Where is capital likely moving over the next 24 hours?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
+    "agent": "congestion_agent",
+    "question": "Where is congestion forming right now?",
+    "time_horizon_hours": 6,
+    "enabled": true
+  },
+  {
+    "agent": "route_hazard_agent",
+    "question": "Which capital routes are becoming unsafe?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
+    "agent": "destination_prediction_agent",
+    "question": "Which destinations are gaining probability?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
+    "agent": "narrative_acceleration_agent",
+    "question": "Which narratives are accelerating unusually fast?",
+    "time_horizon_hours": 24,
+    "enabled": false
+  },
+  {
+    "agent": "agent_swarm_formation_agent",
+    "question": "Are agent swarms forming around a common destination?",
+    "time_horizon_hours": 24,
+    "enabled": false
+  }
+]

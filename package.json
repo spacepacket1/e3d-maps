@@ -1,0 +1,12 @@
+{
+  "name": "e3d-maps",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Repository bootstrap for the E3D Maps application.",
+  "scripts": {
+    "build": "node ui/build.mjs",
+    "test": "node --test ui/tests/*.test.mjs",
+    "ui:build": "node ui/build.mjs",
+    "ui:dev": "node ui/dev-server.mjs"
+  }
+}
