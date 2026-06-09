@@ -146,6 +146,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     import jobs.compute_signal_utility_scores as utility_mod
     import jobs.export_training_examples as export_mod
     from agents.runner import MapsRunner
+    from agents.qwen_orchestrator import QwenOrchestrator
     from settings import MapsRuntimeSettings, MapsRunnerSettings
 
     dry_run: bool = args.dry_run
@@ -156,12 +157,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         runtime_settings=runtime_settings,
         runner_settings=runner_settings,
     )
+    orchestrator = QwenOrchestrator.from_settings(
+        runtime_settings,
+        maps_runner_factory=lambda: runner,
+    )
 
     scheduler = MapsJobScheduler.from_runner_and_jobs(
-        runner_fn=lambda: runner.run_once(dry_run=dry_run),
+        runner_fn=lambda: orchestrator.run_maps_cycle(dry_run=dry_run),
         scorer_fn=lambda: scorer_mod.run(dry_run=dry_run),
         utility_fn=lambda: utility_mod.run(dry_run=dry_run),
         export_fn=lambda: export_mod.run(),
+        signals_interval=runner_settings.run_interval_seconds,
+        scoring_interval=runner_settings.scoring_interval_seconds,
+        utility_interval=runner_settings.utility_interval_seconds,
+        export_interval=runner_settings.export_interval_seconds,
+        tick_seconds=runner_settings.scheduler_tick_seconds,
     )
 
     if args.once:

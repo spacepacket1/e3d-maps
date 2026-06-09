@@ -20,15 +20,19 @@ class OrchestratorResult:
 class QwenOrchestrator:
     """Coordinates the Maps adapter lifecycle within the Qwen runtime.
 
+    Maps and the trading floor both send an X-Adapter-Path header per request.
+    The Qwen server caches adapters and queues concurrent requests internally —
+    no cross-app coordination is needed at the client level.
+
     In stub mode (enable_runtime_loading=False, the default), no explicit
     adapter loading or unloading occurs. The adapter name and path are
-    forwarded as X-Adapter-Path headers on each Qwen request. This is the
-    correct mode for MLX per-request adapter serving.
+    forwarded as request headers. This is the correct mode for per-request
+    adapter serving.
 
     In runtime mode (enable_runtime_loading=True), the orchestrator calls
     the adapter manager's load/unload callbacks before and after each Maps
-    cycle. Use this when moving to vLLM or another server that requires
-    explicit adapter management between inference runs.
+    cycle. Use this when moving to a backend that requires explicit adapter
+    management between inference runs.
 
     offset_seconds introduces a startup delay before the first Maps cycle.
     Use this when scheduling Maps after story scripts or thesis updates to
@@ -54,7 +58,6 @@ class QwenOrchestrator:
             self._sleep_fn(float(self.offset_seconds))
 
         adapter_state = self.adapter_manager.load()
-
         ran = False
         try:
             if self._maps_runner_factory is not None:

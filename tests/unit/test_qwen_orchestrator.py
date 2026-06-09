@@ -121,3 +121,5 @@ def test_orchestrator_from_settings():
 
     assert isinstance(orchestrator, QwenOrchestrator)
     assert orchestrator.adapter_manager.adapter_name == "base-v0"
+
+
