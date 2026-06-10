@@ -13,3 +13,4 @@ venv/
 .DS_Store
 training/exports/*.jsonl
 training/datasets/*.jsonl
+deploy/logs/
