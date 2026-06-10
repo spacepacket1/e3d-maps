@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from pydantic import ValidationError
 
-from clients.qwen_client import QwenClient
+from clients.qwen_client import QwenClient, QwenClientError
 from schemas.navigation_signal import NavigationSignal
 from schemas.route_prediction import RoutePrediction
 
@@ -144,7 +144,10 @@ class BaseAgent:
     def run(self, context: Mapping[str, Any]) -> AgentRunResult:
         prompt = self.build_prompt(context)
         question = self.render_question(context)
-        raw_response = self.call_qwen(prompt)
+        try:
+            raw_response = self.call_qwen(prompt)
+        except QwenClientError as exc:
+            raise AgentError(f"{self.agent_name} Qwen request failed: {exc}") from exc
         parsed_output = self.parse_json(raw_response)
         result = self.validate_output(parsed_output, question=question)
         return AgentRunResult(

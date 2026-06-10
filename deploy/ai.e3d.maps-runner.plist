@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.e3d.maps-runner</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/python3</string>
+        <string>-m</string>
+        <string>agents.scheduler</string>
+        <string>--loop</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/mini/e3d-maps</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- Qwen (local) -->
+        <key>LLM_BASE_URL</key>
+        <string>http://127.0.0.1:5050</string>
+        <key>LLM_MODEL</key>
+        <string>mlx-community/Qwen2.5-14B-Instruct-4bit</string>
+
+        <!-- ClickHouse (remote) -->
+        <key>CLICKHOUSE_HOST</key>
+        <string>3.131.8.46</string>
+        <key>CLICKHOUSE_PORT</key>
+        <string>8123</string>
+        <key>CLICKHOUSE_DATABASE</key>
+        <string>default</string>
+        <key>CLICKHOUSE_USERNAME</key>
+        <string>admin</string>
+        <key>CLICKHOUSE_PASSWORD</key>
+        <string>spider8Fly1!</string>
+        <key>CLICKHOUSE_SECURE</key>
+        <string>false</string>
+
+        <!-- Adapter — empty path = no X-Adapter-Path header sent to Qwen -->
+        <key>MAPS_ADAPTER_PATH</key>
+        <string></string>
+        <key>MAPS_ADAPTER_NAME</key>
+        <string>base-v0</string>
+        <key>MAPS_ENABLE_ADAPTER_LOADING</key>
+        <string>false</string>
+
+        <!-- Cadence -->
+        <key>MAPS_RUNNER_INTERVAL_SECONDS</key>
+        <string>300</string>
+        <key>MAPS_SCORING_INTERVAL_SECONDS</key>
+        <string>1800</string>
+        <key>MAPS_UTILITY_INTERVAL_SECONDS</key>
+        <string>3600</string>
+        <key>MAPS_EXPORT_INTERVAL_SECONDS</key>
+        <string>86400</string>
+        <key>MAPS_SCHEDULER_TICK_SECONDS</key>
+        <string>60</string>
+
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+        <key>MAPS_ENV</key>
+        <string>production</string>
+    </dict>
+
+    <!-- Restart automatically if the process exits -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Start at login -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/mini/e3d-maps/deploy/logs/maps-runner.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/mini/e3d-maps/deploy/logs/maps-runner.err</string>
+
+    <!-- Throttle rapid crash-restart loops -->
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+</dict>
+</plist>

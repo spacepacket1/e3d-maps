@@ -139,6 +139,10 @@ class QwenClient:
                 if attempt == attempts - 1:
                     raise QwenClientError(f"Qwen request failed: {exc.reason}") from exc
                 last_error = exc
+            except OSError as exc:
+                if attempt == attempts - 1:
+                    raise QwenClientError(f"Qwen request failed: {exc}") from exc
+                last_error = exc
 
             if self.retry_backoff_seconds > 0:
                 time.sleep(self.retry_backoff_seconds * (attempt + 1))

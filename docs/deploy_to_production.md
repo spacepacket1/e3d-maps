@@ -215,31 +215,29 @@ curl -s https://maps.e3d.ai/api/story-types | python3 -m json.tool | head -10
 
 ---
 
-## Step 11 — Start the Maps runner via PM2
+## Step 11 — Start the Maps runner via launchd
 
-Create the PM2 entry. The runner uses the scheduler which loops on a 60-second tick:
+A launchd plist is included at `deploy/ai.e3d.maps-runner.plist`.
 
-```bash
-cd /Users/mini/clawd/e3d-maps
-
-pm2 start \
-  --name "e3d-maps-runner" \
-  --interpreter "/Users/mini/clawd/e3d-maps/.venv/bin/python" \
-  --cwd "/Users/mini/clawd/e3d-maps" \
-  -- agents/scheduler.py --loop
-```
-
-Save the PM2 process list so it survives reboots:
+The plist embeds the ClickHouse credentials and Qwen URL directly.
+Update those values if they change, then install:
 
 ```bash
-pm2 save
-pm2 startup  # follow any printed instructions to register the init script
+# Install into user LaunchAgents (runs at login, no sudo needed)
+cp /Users/mini/e3d-maps/deploy/ai.e3d.maps-runner.plist \
+   ~/Library/LaunchAgents/ai.e3d.maps-runner.plist
+
+# Load and start immediately
+launchctl load ~/Library/LaunchAgents/ai.e3d.maps-runner.plist
 ```
 
 Check the runner is healthy:
 
 ```bash
-pm2 logs e3d-maps-runner --lines 30
+launchctl list | grep e3d
+# Should show ai.e3d.maps-runner with a PID (not just a status code)
+
+tail -f /Users/mini/e3d-maps/deploy/logs/maps-runner.log
 # Should see scheduler tick messages, no tracebacks
 ```
 
@@ -273,14 +271,16 @@ pm2 status
 
 **View runner logs:**
 ```bash
-pm2 logs e3d-maps-runner
+tail -f /Users/mini/e3d-maps/deploy/logs/maps-runner.log
+tail -f /Users/mini/e3d-maps/deploy/logs/maps-runner.err
 ```
 
 **Restart runner after a code update:**
 ```bash
-cd /Users/mini/clawd/e3d-maps
+cd /Users/mini/e3d-maps
 git pull origin main
-pm2 restart e3d-maps-runner
+launchctl unload ~/Library/LaunchAgents/ai.e3d.maps-runner.plist
+launchctl load  ~/Library/LaunchAgents/ai.e3d.maps-runner.plist
 ```
 
 **Run backtest manually:**

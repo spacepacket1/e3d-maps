@@ -34,7 +34,8 @@ class MapsRuntimeSettings:
     def from_env(cls, environ: Mapping[str, str] | None = None) -> "MapsRuntimeSettings":
         env = environ if environ is not None else os.environ
         adapter_name = env.get("MAPS_ADAPTER_NAME") or env.get("MAPS_DEFAULT_ADAPTER") or "base-v0"
-        adapter_path = env.get("MAPS_ADAPTER_PATH") or "./adapters_maps_v1"
+        _adapter_path_env = env.get("MAPS_ADAPTER_PATH")
+        adapter_path = _adapter_path_env if _adapter_path_env is not None else "./adapters_maps_v1"
         api_key = env.get("QWEN_API_KEY") or None
         base_url = env.get("LLM_BASE_URL") or env.get("QWEN_BASE_URL") or "http://127.0.0.1:5050"
         model = env.get("LLM_MODEL") or env.get("MAPS_DEFAULT_MODEL") or "mlx-community/Qwen2.5-14B-Instruct-4bit"
