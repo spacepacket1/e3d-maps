@@ -29,6 +29,7 @@ class MapsRuntimeSettings:
     # MAPS_ADAPTER_PATH is sent as X-Adapter-Path header per request, matching trading floor.
     maps_adapter_path: str = "./adapters_maps_v1"
     maps_enable_adapter_loading: bool = False
+    qwen_timeout: float = 60.0
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> "MapsRuntimeSettings":
@@ -48,6 +49,7 @@ class MapsRuntimeSettings:
             maps_adapter_name=adapter_name,
             maps_adapter_path=adapter_path,
             maps_enable_adapter_loading=_parse_bool(env.get("MAPS_ENABLE_ADAPTER_LOADING")),
+            qwen_timeout=float(env.get("QWEN_TIMEOUT") or 60.0),
         )
 
 

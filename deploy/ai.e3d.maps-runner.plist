@@ -59,6 +59,8 @@
         <key>MAPS_SCHEDULER_TICK_SECONDS</key>
         <string>60</string>
 
+        <key>QWEN_TIMEOUT</key>
+        <string>300</string>
         <key>PYTHONUNBUFFERED</key>
         <string>1</string>
         <key>MAPS_ENV</key>

@@ -101,6 +101,7 @@ class MapsRunner:
             completions_path=runtime_settings.qwen_completions_path,
             default_model=runtime_settings.qwen_model,
             api_key=runtime_settings.qwen_api_key,
+            timeout=runtime_settings.qwen_timeout,
             fallback_enabled=runner_settings.use_sample_responses,
             response_factory=self._sample_response_for_prompt,
         )
