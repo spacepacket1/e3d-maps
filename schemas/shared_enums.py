@@ -63,5 +63,13 @@ class FlowMagnitude(StrEnum):
     HIGH = "high"
 
 
+class EdgeStatus(StrEnum):
+    ACTIVE = "active"
+    NEW = "new"
+    STRENGTHENING = "strengthening"
+    WEAKENING = "weakening"
+    CLOSED = "closed"
+
+
 def is_known_signal_type(value: str) -> bool:
     return value in {member.value for member in SignalType}

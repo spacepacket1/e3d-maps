@@ -209,6 +209,59 @@ class MapsAPIService:
             normalizer=normalize_navigation_signal_row,
         )
 
+    def get_latest_flow_graph(self) -> dict[str, Any] | None:
+        snapshot_rows = self._query_rows(
+            """
+            SELECT *
+            FROM FlowGraphSnapshots
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            FORMAT JSONEachRow
+            """
+        )
+        if not snapshot_rows:
+            return None
+        snapshot = snapshot_rows[0]
+        snapshot_id = snapshot["id"]
+
+        edge_rows = self._query_rows(
+            f"""
+            SELECT *
+            FROM FlowGraphEdges
+            WHERE snapshot_id = {self._sql_string(snapshot_id)}
+            ORDER BY origin ASC, destination ASC
+            FORMAT JSONEachRow
+            """
+        )
+        return _build_graph_response(snapshot, edge_rows)
+
+    def get_flow_graph_around(self, node: str) -> dict[str, Any]:
+        snapshot_rows = self._query_rows(
+            """
+            SELECT id, created_at
+            FROM FlowGraphSnapshots
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            FORMAT JSONEachRow
+            """
+        )
+        if not snapshot_rows:
+            return _empty_subgraph(node)
+        snapshot_id = snapshot_rows[0]["id"]
+        snapshot_created_at = snapshot_rows[0]["created_at"]
+
+        edge_rows = self._query_rows(
+            f"""
+            SELECT *
+            FROM FlowGraphEdges
+            WHERE snapshot_id = {self._sql_string(snapshot_id)}
+              AND (origin = {self._sql_string(node)} OR destination = {self._sql_string(node)})
+            ORDER BY origin ASC, destination ASC
+            FORMAT JSONEachRow
+            """
+        )
+        return _build_subgraph_response(node, snapshot_id, snapshot_created_at, edge_rows)
+
     def get_calibration(self, *, lookback_days: int = 30) -> dict[str, Any]:
         """Return reliability-curve and utility data for the calibration endpoint.
 
@@ -470,3 +523,66 @@ class MapsAPIService:
     def _sql_float(value: float) -> str:
         bounded = max(0.0, min(float(value), 1.0))
         return format(bounded, "g")
+
+
+# ── FlowGraph response builders ───────────────────────────────────────────────
+
+def _serialize_edge(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": row.get("id") or "",
+        "origin": row.get("origin") or "",
+        "destination": row.get("destination") or "",
+        "strength": row.get("strength") or "",
+        "confidence": row.get("confidence") or 0.0,
+        "hazard_level": row.get("hazard_level") or "low",
+        "edge_status": row.get("edge_status") or "active",
+        "source_signal_ids": list(row.get("source_signal_ids") or []),
+    }
+
+
+def _build_graph_response(snapshot: dict[str, Any], edge_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    edges = [_serialize_edge(r) for r in edge_rows]
+    active = [e for e in edges if e["edge_status"] != "closed"]
+    nodes = sorted({n for e in active for n in (e["origin"], e["destination"])})
+    return {
+        "snapshot_id": snapshot.get("id") or "",
+        "created_at": snapshot.get("created_at") or "",
+        "signal_count": snapshot.get("signal_count") or 0,
+        "node_count": snapshot.get("node_count") or 0,
+        "edge_count": snapshot.get("edge_count") or 0,
+        "nodes": nodes,
+        "edges": edges,
+    }
+
+
+def _build_subgraph_response(
+    node: str,
+    snapshot_id: str,
+    snapshot_created_at: str,
+    edge_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    edges = [_serialize_edge(r) for r in edge_rows]
+    inbound = [e for e in edges if e["destination"] == node and e["edge_status"] != "closed"]
+    outbound = [e for e in edges if e["origin"] == node and e["edge_status"] != "closed"]
+    nodes = sorted({n for e in inbound + outbound for n in (e["origin"], e["destination"])})
+    return {
+        "node": node,
+        "snapshot_id": snapshot_id,
+        "created_at": snapshot_created_at,
+        "nodes": nodes,
+        "inbound": inbound,
+        "outbound": outbound,
+        "edges": inbound + outbound,
+    }
+
+
+def _empty_subgraph(node: str) -> dict[str, Any]:
+    return {
+        "node": node,
+        "snapshot_id": None,
+        "created_at": None,
+        "nodes": [],
+        "inbound": [],
+        "outbound": [],
+        "edges": [],
+    }

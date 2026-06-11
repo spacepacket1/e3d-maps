@@ -111,6 +111,21 @@ def get_maps_recommendations(
     )
 
 
+def get_maps_graph(service: MapsAPIService) -> RouteResponse:
+    data = service.get_latest_flow_graph()
+    if data is None:
+        return RouteResponse(
+            status_code=404,
+            body={"status": "not_found", "error": "no_flow_graph_snapshot"},
+        )
+    return RouteResponse(status_code=200, body={"status": "ok", "graph": data})
+
+
+def get_maps_graph_around(service: MapsAPIService, node: str) -> RouteResponse:
+    data = service.get_flow_graph_around(node)
+    return RouteResponse(status_code=200, body={"status": "ok", **data})
+
+
 def get_maps_predictions(
     service: MapsAPIService,
     *,

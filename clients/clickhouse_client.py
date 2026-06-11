@@ -8,6 +8,7 @@ from typing import Any, Iterable, TextIO
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from schemas.flow_graph import FlowEdge, FlowGraphSnapshot
 from schemas.navigation_signal import NavigationSignal
 from schemas.prediction_outcome import PredictionOutcome
 from schemas.route_prediction import RoutePrediction
@@ -120,6 +121,22 @@ class ClickHouseClient:
             records=records,
             schema_model=SignalUtilityScore,
             serializer=self._serialize_signal_utility_score,
+        )
+
+    def insert_flow_graph_snapshot(self, record: FlowGraphSnapshot | dict[str, Any]) -> int:
+        return self._insert_models(
+            table_name="FlowGraphSnapshots",
+            records=[record],
+            schema_model=FlowGraphSnapshot,
+            serializer=self._serialize_flow_graph_snapshot,
+        )
+
+    def insert_flow_graph_edges(self, records: Iterable[FlowEdge | dict[str, Any]]) -> int:
+        return self._insert_models(
+            table_name="FlowGraphEdges",
+            records=records,
+            schema_model=FlowEdge,
+            serializer=self._serialize_flow_edge,
         )
 
     def update_navigation_signal_outcome_status(
@@ -339,6 +356,31 @@ class ClickHouseClient:
             "final_signal_utility_score": record.final_signal_utility_score,
             "linked_action_ids": record.linked_action_ids,
             "linked_outcome_ids": record.linked_outcome_ids,
+            "created_at": ClickHouseClient._format_datetime(record.created_at),
+        }
+
+    @staticmethod
+    def _serialize_flow_graph_snapshot(record: FlowGraphSnapshot) -> dict[str, Any]:
+        return {
+            "id": record.id or "",
+            "signal_count": record.signal_count,
+            "node_count": record.node_count,
+            "edge_count": record.edge_count,
+            "created_at": ClickHouseClient._format_datetime(record.created_at),
+        }
+
+    @staticmethod
+    def _serialize_flow_edge(record: FlowEdge) -> dict[str, Any]:
+        return {
+            "id": record.id or "",
+            "snapshot_id": record.snapshot_id,
+            "origin": record.origin,
+            "destination": record.destination,
+            "strength": record.strength.value,
+            "confidence": record.confidence,
+            "hazard_level": record.hazard_level.value,
+            "source_signal_ids": record.source_signal_ids,
+            "edge_status": record.edge_status.value,
             "created_at": ClickHouseClient._format_datetime(record.created_at),
         }
 
