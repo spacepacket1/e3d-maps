@@ -155,6 +155,60 @@ class MapsAPIService:
             normalizer=normalize_navigation_signal_row,
         )
 
+    def list_predictions(self, *, limit: int = 50, offset: int = 0) -> PaginatedResult[NavigationSignal]:
+        return self._list_rows(
+            table_sql="""
+            SELECT *
+            FROM NavigationSignals
+            {where_clause}
+            ORDER BY created_at DESC, id DESC
+            {limit_clause}
+            FORMAT JSONEachRow
+            """,
+            filters=[
+                "signal_type IN ('capital_migration', 'destination_prediction')",
+            ],
+            limit=limit,
+            offset=offset,
+            normalizer=normalize_navigation_signal_row,
+        )
+
+    def list_destinations(self, *, limit: int = 50, offset: int = 0) -> PaginatedResult[NavigationSignal]:
+        return self._list_rows(
+            table_sql="""
+            SELECT *
+            FROM NavigationSignals
+            {where_clause}
+            ORDER BY confidence DESC, created_at DESC, id DESC
+            {limit_clause}
+            FORMAT JSONEachRow
+            """,
+            filters=[
+                "signal_type = 'destination_prediction'",
+            ],
+            limit=limit,
+            offset=offset,
+            normalizer=normalize_navigation_signal_row,
+        )
+
+    def list_congestion(self, *, limit: int = 50, offset: int = 0) -> PaginatedResult[NavigationSignal]:
+        return self._list_rows(
+            table_sql="""
+            SELECT *
+            FROM NavigationSignals
+            {where_clause}
+            ORDER BY created_at DESC, id DESC
+            {limit_clause}
+            FORMAT JSONEachRow
+            """,
+            filters=[
+                "signal_type = 'congestion_formation'",
+            ],
+            limit=limit,
+            offset=offset,
+            normalizer=normalize_navigation_signal_row,
+        )
+
     def get_calibration(self, *, lookback_days: int = 30) -> dict[str, Any]:
         """Return reliability-curve and utility data for the calibration endpoint.
 

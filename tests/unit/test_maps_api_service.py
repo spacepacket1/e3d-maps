@@ -2,7 +2,16 @@ from __future__ import annotations
 
 import json
 
-from api.maps_routes import get_maps_calibration, get_maps_hazards, get_maps_signal, get_maps_signals, get_maps_state
+from api.maps_routes import (
+    get_maps_calibration,
+    get_maps_congestion,
+    get_maps_destinations,
+    get_maps_hazards,
+    get_maps_predictions,
+    get_maps_signal,
+    get_maps_signals,
+    get_maps_state,
+)
 from api.story_types_routes import get_story_type, get_story_types
 from services.maps_api_service import MapsAPIService
 from tests.unit.payloads import (
@@ -306,3 +315,70 @@ def test_get_maps_calibration_route_returns_ok():
     assert response.body["calibration"]["lookback_days"] == 30
     assert "overall" in response.body["calibration"]
     assert "by_signal_type" in response.body["calibration"]
+
+
+def test_list_predictions_filters_to_migration_and_destination():
+    seen = {}
+
+    def query_executor(body: bytes) -> bytes:
+        seen["sql"] = body.decode("utf-8")
+        return _serialize_json_each_row(
+            _navigation_signal_row(signal_type="capital_migration"),
+            _navigation_signal_row(signal_type="destination_prediction"),
+        )
+
+    service = MapsAPIService(query_executor=query_executor)
+    result = service.list_predictions(limit=10, offset=0)
+
+    assert "signal_type IN ('capital_migration', 'destination_prediction')" in seen["sql"]
+    assert len(result.items) == 2
+
+
+def test_list_destinations_filters_and_orders_by_confidence():
+    seen = {}
+
+    def query_executor(body: bytes) -> bytes:
+        seen["sql"] = body.decode("utf-8")
+        return _serialize_json_each_row(_navigation_signal_row(signal_type="destination_prediction"))
+
+    service = MapsAPIService(query_executor=query_executor)
+    result = service.list_destinations(limit=10, offset=0)
+
+    assert "signal_type = 'destination_prediction'" in seen["sql"]
+    assert "ORDER BY confidence DESC" in seen["sql"]
+    assert result.items[0].signal_type == "destination_prediction"
+
+
+def test_list_congestion_filters_to_congestion_formation():
+    seen = {}
+
+    def query_executor(body: bytes) -> bytes:
+        seen["sql"] = body.decode("utf-8")
+        return _serialize_json_each_row(_navigation_signal_row(signal_type="congestion_formation"))
+
+    service = MapsAPIService(query_executor=query_executor)
+    result = service.list_congestion(limit=10, offset=0)
+
+    assert "signal_type = 'congestion_formation'" in seen["sql"]
+    assert result.items[0].signal_type == "congestion_formation"
+
+
+def test_predictions_destinations_congestion_route_handlers():
+    signal_service = MapsAPIService(
+        query_executor=lambda body: _serialize_json_each_row(
+            _navigation_signal_row(signal_type="capital_migration"),
+        )
+    )
+
+    predictions_response = get_maps_predictions(signal_service, limit=10, offset=0)
+    assert predictions_response.status_code == 200
+    assert "predictions" in predictions_response.body
+    assert predictions_response.body["pagination"]["count"] == 1
+
+    destinations_response = get_maps_destinations(signal_service, limit=10, offset=0)
+    assert destinations_response.status_code == 200
+    assert "destinations" in destinations_response.body
+
+    congestion_response = get_maps_congestion(signal_service, limit=10, offset=0)
+    assert congestion_response.status_code == 200
+    assert "congestion" in congestion_response.body

@@ -111,6 +111,36 @@ def get_maps_recommendations(
     )
 
 
+def get_maps_predictions(
+    service: MapsAPIService,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+) -> RouteResponse:
+    result = service.list_predictions(limit=limit, offset=offset)
+    return RouteResponse(status_code=200, body=_paginated_body(key="predictions", result=result))
+
+
+def get_maps_destinations(
+    service: MapsAPIService,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+) -> RouteResponse:
+    result = service.list_destinations(limit=limit, offset=offset)
+    return RouteResponse(status_code=200, body=_paginated_body(key="destinations", result=result))
+
+
+def get_maps_congestion(
+    service: MapsAPIService,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+) -> RouteResponse:
+    result = service.list_congestion(limit=limit, offset=offset)
+    return RouteResponse(status_code=200, body=_paginated_body(key="congestion", result=result))
+
+
 def get_maps_calibration(
     service: MapsAPIService,
     *,
