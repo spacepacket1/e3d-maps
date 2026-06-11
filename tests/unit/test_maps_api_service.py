@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from api.maps_routes import get_maps_hazards, get_maps_signal, get_maps_signals, get_maps_state
+from api.maps_routes import get_maps_calibration, get_maps_hazards, get_maps_signal, get_maps_signals, get_maps_state
 from api.story_types_routes import get_story_type, get_story_types
 from services.maps_api_service import MapsAPIService
 from tests.unit.payloads import (
@@ -239,3 +239,70 @@ def test_route_handlers_return_expected_payload_shapes():
     story_type_response = get_story_type(story_type_service, "capital_migration")
     assert story_type_response.status_code == 200
     assert story_type_response.body["story_type"]["story_type"] == "capital_migration"
+
+
+def _calibration_query_executor(body: bytes) -> bytes:
+    sql = body.decode("utf-8")
+    if "avg(po.prediction_accuracy)" in sql and "confidence_bucket" not in sql:
+        # Overall summary query.
+        return _serialize_json_each_row({
+            "mean_accuracy": 0.68,
+            "mean_confidence": 0.72,
+            "correct_count": 14,
+            "total_count": 20,
+        })
+    if "confidence_bucket" in sql:
+        # Reliability curve query.
+        return _serialize_json_each_row(
+            {"signal_type": "capital_migration", "confidence_bucket": 0.6, "mean_confidence": 0.65, "realized_accuracy": 0.61, "sample_count": 5},
+            {"signal_type": "capital_migration", "confidence_bucket": 0.7, "mean_confidence": 0.74, "realized_accuracy": 0.70, "sample_count": 8},
+        )
+    if "final_signal_utility_score" in sql:
+        # Utility stats query.
+        return _serialize_json_each_row({
+            "signal_type": "capital_migration",
+            "mean_utility": 0.72,
+            "min_utility": 0.45,
+            "max_utility": 0.91,
+            "sample_count": 10,
+        })
+    return b""
+
+
+def test_get_calibration_builds_structured_report():
+    service = MapsAPIService(query_executor=_calibration_query_executor)
+    result = service.get_calibration(lookback_days=30)
+
+    overall = result["overall"]
+    assert overall["total_scored"] == 20
+    assert overall["mean_confidence"] == 0.72
+    assert overall["mean_accuracy"] == 0.68
+    assert overall["calibration_error"] == round(abs(0.68 - 0.72), 4)
+    assert overall["hit_rate"] == round(14 / 20, 4)
+
+    cm = result["by_signal_type"]["capital_migration"]
+    assert len(cm["reliability_curve"]) == 2
+    assert cm["reliability_curve"][0]["confidence_bucket"] == 0.6
+    assert cm["reliability_curve"][0]["sample_count"] == 5
+    assert cm["utility"]["mean"] == 0.72
+    assert cm["utility"]["sample_count"] == 10
+
+
+def test_get_calibration_returns_empty_overall_when_no_data():
+    service = MapsAPIService(query_executor=lambda body: b"")
+    result = service.get_calibration(lookback_days=30)
+
+    assert result["overall"]["total_scored"] == 0
+    assert result["overall"]["mean_accuracy"] is None
+    assert result["by_signal_type"] == {}
+
+
+def test_get_maps_calibration_route_returns_ok():
+    service = MapsAPIService(query_executor=_calibration_query_executor)
+    response = get_maps_calibration(service, lookback_days=30)
+
+    assert response.status_code == 200
+    assert response.body["status"] == "ok"
+    assert response.body["calibration"]["lookback_days"] == 30
+    assert "overall" in response.body["calibration"]
+    assert "by_signal_type" in response.body["calibration"]

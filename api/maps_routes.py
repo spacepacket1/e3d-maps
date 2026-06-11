@@ -111,6 +111,18 @@ def get_maps_recommendations(
     )
 
 
+def get_maps_calibration(
+    service: MapsAPIService,
+    *,
+    lookback_days: int = 30,
+) -> RouteResponse:
+    data = service.get_calibration(lookback_days=lookback_days)
+    return RouteResponse(
+        status_code=200,
+        body={"status": "ok", "calibration": data},
+    )
+
+
 def _paginated_body(*, key: str, result: PaginatedResult[Any]) -> dict[str, Any]:
     return {
         "status": "ok",

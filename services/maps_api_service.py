@@ -155,6 +155,123 @@ class MapsAPIService:
             normalizer=normalize_navigation_signal_row,
         )
 
+    def get_calibration(self, *, lookback_days: int = 30) -> dict[str, Any]:
+        """Return reliability-curve and utility data for the calibration endpoint.
+
+        Three queries:
+        1. Overall accuracy / hit-rate summary.
+        2. Per (signal_type, confidence_bucket) reliability curve points.
+        3. Per signal_type utility-score distribution from SignalUtilityScores.
+        """
+        lookback_clause = (
+            f"po.created_at >= now() - INTERVAL {max(1, int(lookback_days))} DAY"
+        )
+
+        overall_rows = self._query_rows(
+            f"""
+            SELECT
+                avg(po.prediction_accuracy)         AS mean_accuracy,
+                avg(ns.confidence)                  AS mean_confidence,
+                countIf(po.map_prediction_correct = 1) AS correct_count,
+                count()                             AS total_count
+            FROM PredictionOutcomes po
+            INNER JOIN NavigationSignals ns ON ns.id = po.navigation_signal_id
+            WHERE {lookback_clause}
+            FORMAT JSONEachRow
+            """
+        )
+
+        curve_rows = self._query_rows(
+            f"""
+            SELECT
+                ns.signal_type                              AS signal_type,
+                floor(ns.confidence * 10) / 10             AS confidence_bucket,
+                avg(ns.confidence)                         AS mean_confidence,
+                avg(po.prediction_accuracy)                AS realized_accuracy,
+                count()                                    AS sample_count
+            FROM PredictionOutcomes po
+            INNER JOIN NavigationSignals ns ON ns.id = po.navigation_signal_id
+            WHERE {lookback_clause}
+            GROUP BY signal_type, confidence_bucket
+            ORDER BY signal_type ASC, confidence_bucket ASC
+            FORMAT JSONEachRow
+            """
+        )
+
+        utility_rows = self._query_rows(
+            """
+            SELECT
+                ns.signal_type                             AS signal_type,
+                avg(sus.final_signal_utility_score)        AS mean_utility,
+                min(sus.final_signal_utility_score)        AS min_utility,
+                max(sus.final_signal_utility_score)        AS max_utility,
+                count()                                    AS sample_count
+            FROM SignalUtilityScores sus
+            INNER JOIN NavigationSignals ns ON ns.id = sus.navigation_signal_id
+            GROUP BY signal_type
+            FORMAT JSONEachRow
+            """
+        )
+
+        # Build overall summary.
+        overall: dict[str, Any] = {
+            "mean_confidence": None,
+            "mean_accuracy": None,
+            "calibration_error": None,
+            "hit_rate": None,
+            "total_scored": 0,
+        }
+        if overall_rows:
+            row = overall_rows[0]
+            total = int(row.get("total_count") or 0)
+            mean_acc = float(row.get("mean_accuracy") or 0.0) if total else None
+            mean_conf = float(row.get("mean_confidence") or 0.0) if total else None
+            correct = int(row.get("correct_count") or 0)
+            overall = {
+                "mean_confidence": round(mean_conf, 4) if mean_conf is not None else None,
+                "mean_accuracy": round(mean_acc, 4) if mean_acc is not None else None,
+                "calibration_error": (
+                    round(abs(mean_acc - mean_conf), 4)
+                    if mean_acc is not None and mean_conf is not None
+                    else None
+                ),
+                "hit_rate": round(correct / total, 4) if total else None,
+                "total_scored": total,
+            }
+
+        # Group reliability curve points by signal_type.
+        by_type: dict[str, dict[str, Any]] = {}
+        for row in curve_rows:
+            st = row.get("signal_type") or "unknown"
+            if st not in by_type:
+                by_type[st] = {"reliability_curve": [], "utility": None}
+            by_type[st]["reliability_curve"].append(
+                {
+                    "confidence_bucket": round(float(row.get("confidence_bucket") or 0), 1),
+                    "mean_confidence": round(float(row.get("mean_confidence") or 0), 4),
+                    "realized_accuracy": round(float(row.get("realized_accuracy") or 0), 4),
+                    "sample_count": int(row.get("sample_count") or 0),
+                }
+            )
+
+        # Merge utility stats.
+        for row in utility_rows:
+            st = row.get("signal_type") or "unknown"
+            if st not in by_type:
+                by_type[st] = {"reliability_curve": [], "utility": None}
+            by_type[st]["utility"] = {
+                "mean": round(float(row.get("mean_utility") or 0), 4),
+                "min": round(float(row.get("min_utility") or 0), 4),
+                "max": round(float(row.get("max_utility") or 0), 4),
+                "sample_count": int(row.get("sample_count") or 0),
+            }
+
+        return {
+            "lookback_days": lookback_days,
+            "overall": overall,
+            "by_signal_type": by_type,
+        }
+
     def list_story_types(self, *, limit: int = 100, offset: int = 0) -> PaginatedResult[StoryTypeDefinition]:
         return self._list_rows(
             table_sql="""
