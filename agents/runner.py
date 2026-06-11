@@ -15,10 +15,16 @@ from typing import Any, Callable, Mapping, Sequence
 
 from agents import (
     AgentError,
+    AgentSwarmFormationAgent,
     BaseAgent,
+    CapitalConvictionAgent,
     CapitalMigrationAgent,
     CongestionAgent,
     DestinationPredictionAgent,
+    LiquidityForecastAgent,
+    NarrativeAccelerationAgent,
+    RouteClosureAgent,
+    RouteEmergenceAgent,
     RouteHazardAgent,
 )
 from agents.adapter_manager import AdapterManager
@@ -81,6 +87,12 @@ class MapsRunner:
         "congestion_agent": CongestionAgent,
         "route_hazard_agent": RouteHazardAgent,
         "destination_prediction_agent": DestinationPredictionAgent,
+        "route_closure_agent": RouteClosureAgent,
+        "route_emergence_agent": RouteEmergenceAgent,
+        "liquidity_forecast_agent": LiquidityForecastAgent,
+        "capital_conviction_agent": CapitalConvictionAgent,
+        "narrative_acceleration_agent": NarrativeAccelerationAgent,
+        "agent_swarm_formation_agent": AgentSwarmFormationAgent,
     }
 
     def __init__(
@@ -475,6 +487,186 @@ class MapsRunner:
                             "summary": "Stablecoin inflows increased into Ethereum DeFi wallets.",
                         }
                     ],
+                }
+            )
+        if "route_closure_agent" in prompt or "Which capital routes are closing" in prompt:
+            return json.dumps(
+                {
+                    "navigation_signal": {
+                        "signal_type": "route_closure",
+                        "question": "Which capital routes are closing or becoming unavailable over the next 24 hours?",
+                        "answer": "No confirmed route closure is visible. Monitoring exchange withdrawal rates for anomalies.",
+                        "origin": "",
+                        "destination": "",
+                        "asset_scope": [],
+                        "chain_scope": [],
+                        "time_horizon_hours": 24,
+                        "confidence": 0.0,
+                        "risk_level": "low",
+                        "signal_strength": "weak",
+                        "market_state": "neutral",
+                        "supporting_story_ids": [],
+                        "supporting_thesis_ids": [],
+                        "evidence": [],
+                        "recommended_action": "no_action",
+                        "created_by_agent": "route_closure_agent",
+                        "model": "qwen",
+                        "adapter": "maps-v0.1",
+                        "schema_version": "1.0",
+                        "outcome_status": "pending",
+                        "created_at": "2026-06-11T00:00:00Z",
+                    }
+                }
+            )
+        if "route_emergence_agent" in prompt or "Which new capital routes are opening" in prompt:
+            return json.dumps(
+                {
+                    "navigation_signal": {
+                        "signal_type": "route_emergence",
+                        "question": "Which new capital routes are opening over the next 24 hours?",
+                        "answer": "Stablecoin inflows to Base DeFi are rising. A new yield aggregator launch may be opening the stablecoins→BASE_DEFI route.",
+                        "origin": "stablecoins",
+                        "destination": "BASE_DEFI",
+                        "asset_scope": ["USDC"],
+                        "chain_scope": ["base"],
+                        "time_horizon_hours": 24,
+                        "confidence": 0.55,
+                        "risk_level": "medium",
+                        "signal_strength": "moderate",
+                        "market_state": "risk_on",
+                        "supporting_story_ids": ["story_123"],
+                        "supporting_thesis_ids": [],
+                        "evidence": [
+                            {"type": "story", "id": "story_123", "summary": "New yield aggregator launched on Base."}
+                        ],
+                        "recommended_action": "monitor_base_defi_inflows",
+                        "created_by_agent": "route_emergence_agent",
+                        "model": "qwen",
+                        "adapter": "maps-v0.1",
+                        "schema_version": "1.0",
+                        "outcome_status": "pending",
+                        "created_at": "2026-06-11T00:00:00Z",
+                    }
+                }
+            )
+        if "liquidity_forecast_agent" in prompt or "Where is liquidity thinning or building" in prompt:
+            return json.dumps(
+                {
+                    "navigation_signal": {
+                        "signal_type": "liquidity_forecast",
+                        "question": "Where is liquidity thinning or building over the next 12 hours?",
+                        "answer": "Liquidity appears stable in ETH DeFi stablecoin pools. No strong thinning or building signal detected.",
+                        "origin": "ETH_DEFI",
+                        "destination": "ETH_DEFI",
+                        "asset_scope": ["USDC"],
+                        "chain_scope": ["ethereum"],
+                        "time_horizon_hours": 12,
+                        "confidence": 0.45,
+                        "risk_level": "low",
+                        "signal_strength": "weak",
+                        "market_state": "neutral",
+                        "supporting_story_ids": [],
+                        "supporting_thesis_ids": [],
+                        "evidence": [],
+                        "recommended_action": "monitor",
+                        "created_by_agent": "liquidity_forecast_agent",
+                        "model": "qwen",
+                        "adapter": "maps-v0.1",
+                        "schema_version": "1.0",
+                        "outcome_status": "pending",
+                        "created_at": "2026-06-11T00:00:00Z",
+                    }
+                }
+            )
+        if "capital_conviction_agent" in prompt or "Which positions show strong capital conviction" in prompt:
+            return json.dumps(
+                {
+                    "navigation_signal": {
+                        "signal_type": "capital_conviction",
+                        "question": "Which positions show strong capital conviction over the next 24 hours?",
+                        "answer": "Smart-money wallet clusters show moderate conviction in ETH DeFi positions. Multiple reinforcing entries detected across sessions.",
+                        "origin": "stablecoins",
+                        "destination": "ETH_DEFI",
+                        "asset_scope": ["ETH", "AAVE"],
+                        "chain_scope": ["ethereum"],
+                        "time_horizon_hours": 24,
+                        "confidence": 0.65,
+                        "risk_level": "low",
+                        "signal_strength": "moderate",
+                        "market_state": "risk_on",
+                        "supporting_story_ids": ["story_123"],
+                        "supporting_thesis_ids": ["thesis_789"],
+                        "evidence": [
+                            {"type": "wallet_cluster", "id": "cluster_sm_01", "summary": "Smart-money added to ETH DeFi positions."}
+                        ],
+                        "recommended_action": "align_with_conviction_flow",
+                        "created_by_agent": "capital_conviction_agent",
+                        "model": "qwen",
+                        "adapter": "maps-v0.1",
+                        "schema_version": "1.0",
+                        "outcome_status": "pending",
+                        "created_at": "2026-06-11T00:00:00Z",
+                    }
+                }
+            )
+        if "narrative_acceleration_agent" in prompt or "Which narratives are accelerating" in prompt:
+            return json.dumps(
+                {
+                    "navigation_signal": {
+                        "signal_type": "narrative_acceleration",
+                        "question": "Which narratives are accelerating unusually fast?",
+                        "answer": "The ETH DeFi recovery narrative is appearing across multiple stories and theses. Velocity is above baseline but not yet at acceleration threshold.",
+                        "origin": "stablecoins",
+                        "destination": "ETH_DEFI",
+                        "asset_scope": ["ETH"],
+                        "chain_scope": ["ethereum"],
+                        "time_horizon_hours": 24,
+                        "confidence": 0.58,
+                        "risk_level": "medium",
+                        "signal_strength": "moderate",
+                        "market_state": "transitioning",
+                        "supporting_story_ids": ["story_123"],
+                        "supporting_thesis_ids": ["thesis_789"],
+                        "evidence": [
+                            {"type": "story_cluster", "id": "cluster_narrative_01", "summary": "Multiple ETH DeFi recovery stories in recent window."}
+                        ],
+                        "recommended_action": "monitor_for_capital_flow_confirmation",
+                        "created_by_agent": "narrative_acceleration_agent",
+                        "model": "qwen",
+                        "adapter": "maps-v0.1",
+                        "schema_version": "1.0",
+                        "outcome_status": "pending",
+                        "created_at": "2026-06-11T00:00:00Z",
+                    }
+                }
+            )
+        if "agent_swarm_formation_agent" in prompt or "Are agent swarms forming" in prompt:
+            return json.dumps(
+                {
+                    "navigation_signal": {
+                        "signal_type": "agent_swarm_formation",
+                        "question": "Are agent swarms forming around a common destination?",
+                        "answer": "No clear swarm formation detected. Wallet cluster movements are diverse with no dominant convergence.",
+                        "origin": "",
+                        "destination": "",
+                        "asset_scope": [],
+                        "chain_scope": [],
+                        "time_horizon_hours": 24,
+                        "confidence": 0.0,
+                        "risk_level": "low",
+                        "signal_strength": "weak",
+                        "market_state": "neutral",
+                        "supporting_story_ids": [],
+                        "supporting_thesis_ids": [],
+                        "evidence": [],
+                        "recommended_action": "no_action",
+                        "created_by_agent": "agent_swarm_formation_agent",
+                        "model": "qwen",
+                        "adapter": "maps-v0.1",
+                        "schema_version": "1.0",
+                        "outcome_status": "pending",
+                        "created_at": "2026-06-11T00:00:00Z",
+                    }
                 }
             )
         return json.dumps(

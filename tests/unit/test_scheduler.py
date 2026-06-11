@@ -113,6 +113,34 @@ def test_from_runner_and_jobs_builds_four_jobs():
     assert len(export_calls) == 1
 
 
+def test_from_runner_and_jobs_includes_flow_graph():
+    flow_graph_calls: list[None] = []
+
+    scheduler = MapsJobScheduler.from_runner_and_jobs(
+        runner_fn=lambda: None,
+        flow_graph_fn=lambda: flow_graph_calls.append(None),
+    )
+
+    names = [j.name for j in scheduler.jobs]
+    assert "assemble_flow_graph" in names
+    assert len(scheduler.jobs) == 2
+
+    result = scheduler.run_once()
+    assert result.jobs_run == 2
+    assert len(flow_graph_calls) == 1
+
+
+def test_from_runner_and_jobs_flow_graph_uses_configured_interval():
+    scheduler = MapsJobScheduler.from_runner_and_jobs(
+        runner_fn=lambda: None,
+        flow_graph_fn=lambda: None,
+        flow_graph_interval=600,
+    )
+
+    fg_job = next(j for j in scheduler.jobs if j.name == "assemble_flow_graph")
+    assert fg_job.interval_seconds == 600
+
+
 def test_from_runner_and_jobs_omits_optional_jobs():
     scheduler = MapsJobScheduler.from_runner_and_jobs(
         runner_fn=lambda: None,

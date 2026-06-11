@@ -24,15 +24,39 @@
     "enabled": true
   },
   {
+    "agent": "route_closure_agent",
+    "question": "Which capital routes are closing or becoming unavailable over the next 24 hours?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
+    "agent": "route_emergence_agent",
+    "question": "Which new capital routes are opening over the next 24 hours?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
+    "agent": "liquidity_forecast_agent",
+    "question": "Where is liquidity thinning or building over the next 12 hours?",
+    "time_horizon_hours": 12,
+    "enabled": true
+  },
+  {
+    "agent": "capital_conviction_agent",
+    "question": "Which positions show strong capital conviction over the next 24 hours?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
     "agent": "narrative_acceleration_agent",
     "question": "Which narratives are accelerating unusually fast?",
     "time_horizon_hours": 24,
-    "enabled": false
+    "enabled": true
   },
   {
     "agent": "agent_swarm_formation_agent",
     "question": "Are agent swarms forming around a common destination?",
     "time_horizon_hours": 24,
-    "enabled": false
+    "enabled": true
   }
 ]

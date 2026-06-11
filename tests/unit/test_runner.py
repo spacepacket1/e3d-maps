@@ -169,7 +169,7 @@ def test_runner_once_dry_run_completes_with_sample_fallbacks():
 
     result = runner.run_once(dry_run=True)
 
-    assert result.asked_questions == 4
-    assert result.skipped_questions == 2
+    assert result.asked_questions == 10
+    assert result.skipped_questions == 0
     assert result.invalid_questions == 0
-    assert result.written_navigation_signals == 4
+    assert result.written_navigation_signals == 10

@@ -48,6 +48,7 @@ class MapsJobScheduler:
     DEFAULT_SCORING_INTERVAL = 1800
     DEFAULT_UTILITY_INTERVAL = 3600
     DEFAULT_EXPORT_INTERVAL = 86400
+    DEFAULT_FLOW_GRAPH_INTERVAL = 300
     DEFAULT_TICK_SECONDS = 60
 
     def __init__(
@@ -88,10 +89,12 @@ class MapsJobScheduler:
         scorer_fn: Callable[[], None] | None = None,
         utility_fn: Callable[[], None] | None = None,
         export_fn: Callable[[], None] | None = None,
+        flow_graph_fn: Callable[[], None] | None = None,
         signals_interval: int = DEFAULT_SIGNALS_INTERVAL,
         scoring_interval: int = DEFAULT_SCORING_INTERVAL,
         utility_interval: int = DEFAULT_UTILITY_INTERVAL,
         export_interval: int = DEFAULT_EXPORT_INTERVAL,
+        flow_graph_interval: int = DEFAULT_FLOW_GRAPH_INTERVAL,
         tick_seconds: int = DEFAULT_TICK_SECONDS,
         sleep_fn: Callable[[float], None] = time.sleep,
         now_fn: Callable[[], float] = time.time,
@@ -127,6 +130,14 @@ class MapsJobScheduler:
                     interval_seconds=export_interval,
                 )
             )
+        if flow_graph_fn is not None:
+            jobs.append(
+                JobConfig(
+                    name="assemble_flow_graph",
+                    run_fn=flow_graph_fn,
+                    interval_seconds=flow_graph_interval,
+                )
+            )
         return cls(jobs=jobs, tick_seconds=tick_seconds, sleep_fn=sleep_fn, now_fn=now_fn)
 
 
@@ -145,6 +156,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     import jobs.score_pending_predictions as scorer_mod
     import jobs.compute_signal_utility_scores as utility_mod
     import jobs.export_training_examples as export_mod
+    import jobs.assemble_flow_graph as flow_graph_mod
     from agents.runner import MapsRunner
     from agents.qwen_orchestrator import QwenOrchestrator
     from settings import MapsRuntimeSettings, MapsRunnerSettings
@@ -167,10 +179,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         scorer_fn=lambda: scorer_mod.run(dry_run=dry_run),
         utility_fn=lambda: utility_mod.run(dry_run=dry_run),
         export_fn=lambda: export_mod.run(),
+        flow_graph_fn=lambda: flow_graph_mod.run(),
         signals_interval=runner_settings.run_interval_seconds,
         scoring_interval=runner_settings.scoring_interval_seconds,
         utility_interval=runner_settings.utility_interval_seconds,
         export_interval=runner_settings.export_interval_seconds,
+        flow_graph_interval=runner_settings.flow_graph_interval_seconds,
         tick_seconds=runner_settings.scheduler_tick_seconds,
     )
 
