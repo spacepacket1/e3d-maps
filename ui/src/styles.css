@@ -18,7 +18,7 @@
 
 body {
   margin: 0;
-  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
   color: var(--text);
   background:
     radial-gradient(circle at top left, rgba(10, 127, 104, 0.14), transparent 36%),
@@ -69,14 +69,157 @@ button {
 }
 
 .app-header h1 {
-  font-size: clamp(2.6rem, 6vw, 4.4rem);
+  font-size: 2rem;
+}
+
+.app-hero {
+  margin-bottom: 8px;
+}
+
+.app-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.app-title-block {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.app-logo {
+  flex-shrink: 0;
+  border-radius: 12px;
+}
+
+.header-links {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.header-link {
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  color: var(--muted);
+  letter-spacing: 0.01em;
+}
+
+.header-link:hover,
+.header-link.is-active {
+  color: var(--accent);
+}
+
+.docs-intro {
+  line-height: 1.65;
+}
+
+.docs-intro code {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: "Menlo", "Monaco", monospace;
+  font-size: 0.88em;
+}
+
+.docs-story-type {
+  display: grid;
+  gap: 8px;
+}
+
+.docs-story-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.docs-story-header h3 {
+  margin: 0;
+}
+
+.docs-category {
+  font-family: "Menlo", "Monaco", monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.docs-section-label {
+  margin: 12px 0 2px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.docs-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
+
+.docs-tag {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  font-family: "Menlo", "Monaco", monospace;
+  font-size: 0.8rem;
+}
+
+.docs-tag-signal {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.docs-questions {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.nav-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.nav-link.is-active .nav-count {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .app-subtitle {
   max-width: 56rem;
   margin: 10px 0 0;
+  color: var(--text);
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.app-description {
+  max-width: 72ch;
+  margin: 12px 0 0;
   color: var(--muted);
-  font-size: 1.05rem;
+  font-size: 0.95rem;
+  line-height: 1.65;
 }
 
 .app-nav {
@@ -248,6 +391,257 @@ button {
   font-size: 0.78rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.api-intro {
+  line-height: 1.65;
+}
+
+.api-intro code {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: "Menlo", "Monaco", monospace;
+  font-size: 0.88em;
+}
+
+.api-endpoint {
+  display: grid;
+  gap: 14px;
+}
+
+.api-route {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.api-method {
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: "Menlo", "Monaco", monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.api-path {
+  font-family: "Menlo", "Monaco", monospace;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.api-description {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.api-params {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.api-params code {
+  font-family: "Menlo", "Monaco", monospace;
+  font-size: 0.85em;
+}
+
+.api-type {
+  color: var(--muted);
+  font-family: "Menlo", "Monaco", monospace;
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.api-example {
+  display: grid;
+  gap: 6px;
+}
+
+.code-block {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #1a1a1a;
+  color: #e8e8e8;
+  font-family: "Menlo", "Monaco", monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* ── Whitepaper ─────────────────────────────── */
+
+.wp-root {
+  display: grid;
+  gap: 24px;
+}
+
+.wp-hero {
+  padding: 48px 40px 44px;
+  border: 1px solid var(--panel-border);
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(10,127,104,0.08) 0%, rgba(197,138,36,0.06) 100%), var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.wp-hero h1 {
+  margin: 12px 0 16px;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  line-height: 1.1;
+  max-width: 48rem;
+}
+
+.wp-lead {
+  max-width: 56rem;
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: var(--muted);
+  margin: 0;
+}
+
+.wp-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 24px;
+  font-family: "Menlo", "Monaco", monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.wp-meta-sep {
+  opacity: 0.4;
+}
+
+.wp-section {
+  display: grid;
+  gap: 0;
+}
+
+.wp-section-header {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.wp-section-header h2 {
+  margin: 8px 0 0;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  line-height: 1.15;
+}
+
+.wp-body {
+  display: grid;
+  gap: 16px;
+}
+
+.wp-body p {
+  margin: 0;
+  line-height: 1.75;
+  font-size: 1.0rem;
+  color: var(--text);
+}
+
+.wp-quote {
+  margin: 8px 0;
+  padding: 20px 24px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 12px 12px 0;
+  background: var(--accent-soft);
+}
+
+.wp-quote p {
+  margin: 0;
+  font-size: 1.05rem;
+  font-style: italic;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.wp-quote cite {
+  display: block;
+  margin-top: 10px;
+  font-size: 0.82rem;
+  font-style: normal;
+  color: var(--muted);
+  font-family: "Menlo", "Monaco", monospace;
+  letter-spacing: 0.04em;
+}
+
+.wp-callout {
+  padding: 20px 24px;
+  border-radius: 16px;
+  background: rgba(0,0,0,0.03);
+  border: 1px solid var(--panel-border);
+  display: grid;
+  gap: 10px;
+}
+
+.wp-callout p {
+  margin: 0;
+  line-height: 1.7;
+}
+
+.wp-footer {
+  margin-top: 8px;
+}
+
+.wp-footer h2 {
+  margin: 8px 0 24px;
+  font-size: 1.6rem;
+}
+
+.wp-cta-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.wp-cta {
+  padding: 20px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.55);
+  border: 1px solid var(--panel-border);
+  display: grid;
+  gap: 8px;
+}
+
+.wp-cta-label {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.wp-cta-url {
+  font-family: "Menlo", "Monaco", monospace;
+  font-size: 0.8rem;
+  background: rgba(0,0,0,0.06);
+  padding: 4px 8px;
+  border-radius: 6px;
+  word-break: break-all;
+}
+
+.wp-cta-desc {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.wp-closing {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--accent) !important;
 }
 
 @media (max-width: 720px) {

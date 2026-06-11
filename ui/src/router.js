@@ -4,7 +4,12 @@ export const navigationItems = [
   { href: "/routes", label: "Routes" },
   { href: "/hazards", label: "Hazards" },
   { href: "/congestion", label: "Congestion" },
-  { href: "/story-types", label: "Story Types" },
+];
+
+export const headerLinks = [
+  { href: "/whitepaper", label: "Whitepaper" },
+  { href: "/docs", label: "Docs" },
+  { href: "/api-docs", label: "API" },
 ];
 
 const routeDefinitions = [
@@ -16,6 +21,9 @@ const routeDefinitions = [
   { id: "hazards", path: "/hazards" },
   { id: "congestion", path: "/congestion" },
   { id: "story-types", path: "/story-types" },
+  { id: "whitepaper", path: "/whitepaper" },
+  { id: "docs", path: "/docs" },
+  { id: "api-docs", path: "/api-docs" },
 ];
 
 export function matchRoute(pathname) {

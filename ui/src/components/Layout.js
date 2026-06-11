@@ -1,15 +1,34 @@
 import { html } from "../vendor.js";
-import { navigationItems, shouldHandleNavigation } from "../router.js";
+import { navigationItems, headerLinks, shouldHandleNavigation } from "../router.js";
 
-export function Layout({ children, currentPath, navigate }) {
+export function Layout({ children, currentPath, navigate, counts = {} }) {
   return html`
     <div className="app-shell">
       <header className="app-header">
-        <div>
-          <p className="eyebrow">maps.e3d.ai</p>
-          <h1>E3D Maps</h1>
+        <div className="app-hero">
+          <div className="app-title-row">
+            <div className="app-title-block">
+              <img src="/e3d_logo_200.png" alt="E3D" className="app-logo" width="48" height="48" />
+              <div>
+                <p className="eyebrow">maps.e3d.ai</p>
+                <h1>E3D Maps</h1>
+              </div>
+            </div>
+            <div className="header-links">
+              ${headerLinks.map((link) => html`
+                <a
+                  key=${link.href}
+                  href=${link.href}
+                  className=${currentPath === link.href ? "header-link is-active" : "header-link"}
+                  onClick=${(e) => handleNavigate(e, link.href, navigate)}
+                >
+                  ${link.label}
+                </a>
+              `)}
+            </div>
+          </div>
           <p className="app-subtitle">
-            Navigation intelligence for capital flows, hazards, and congestion.
+            Navigation intelligence for on-chain capital flows — built for agents, readable by humans.
           </p>
         </div>
         <nav className="app-nav" aria-label="Primary">
@@ -22,6 +41,7 @@ export function Layout({ children, currentPath, navigate }) {
                 onClick=${(event) => handleNavigate(event, item.href, navigate)}
               >
                 ${item.label}
+                ${counts[item.href] != null ? html`<span className="nav-count">${counts[item.href]}</span>` : null}
               </a>
             `
           )}
@@ -33,16 +53,12 @@ export function Layout({ children, currentPath, navigate }) {
 }
 
 function handleNavigate(event, href, navigate) {
-  if (!shouldHandleNavigation(event, href)) {
-    return;
-  }
+  if (!shouldHandleNavigation(event, href)) return;
   event.preventDefault();
   navigate(href);
 }
 
 function isCurrentPath(currentPath, href) {
-  if (href === "/") {
-    return currentPath === "/" || currentPath === "/maps";
-  }
+  if (href === "/") return currentPath === "/" || currentPath === "/maps";
   return currentPath === href;
 }
