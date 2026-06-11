@@ -95,10 +95,35 @@ class BaseAgent:
         )
 
     def parse_json(self, raw_response: str) -> Any:
+        cleaned = self._strip_code_fences(raw_response)
         try:
-            return json.loads(raw_response)
+            return json.loads(cleaned)
         except json.JSONDecodeError as exc:
             raise AgentParseError(f"{self.agent_name} returned invalid JSON: {exc.msg}") from exc
+
+    @staticmethod
+    def _strip_code_fences(raw_response: str) -> str:
+        """Strip Markdown code fences the model sometimes wraps JSON in.
+
+        The system prompt forbids code fences, but Qwen does not reliably
+        comply. A leading ```` ```json ```` (or bare ```` ``` ````) and the
+        trailing ```` ``` ```` cause ``json.loads`` to fail on the first
+        character, so we remove them before parsing. Unfenced responses are
+        returned unchanged.
+        """
+        text = raw_response.strip()
+        if not text.startswith("```"):
+            return text
+        # Drop the opening fence line, including any language tag (e.g. ```json).
+        newline = text.find("\n")
+        if newline == -1:
+            return text
+        text = text[newline + 1 :]
+        # Drop the trailing closing fence if present.
+        closing = text.rfind("```")
+        if closing != -1:
+            text = text[:closing]
+        return text.strip()
 
     def validate_output(self, parsed_output: Any, *, question: str) -> AgentRunResult:
         if parsed_output is None:

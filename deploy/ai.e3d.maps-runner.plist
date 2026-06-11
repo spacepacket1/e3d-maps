@@ -19,11 +19,11 @@
 
     <key>EnvironmentVariables</key>
     <dict>
-        <!-- Qwen (local) -->
+        <!-- Qwen (local) — dedicated 7B instance on :5051 (base; Maps adapter once data exists) -->
         <key>LLM_BASE_URL</key>
-        <string>http://127.0.0.1:5050</string>
+        <string>http://127.0.0.1:5051</string>
         <key>LLM_MODEL</key>
-        <string>mlx-community/Qwen2.5-14B-Instruct-4bit</string>
+        <string>mlx-community/Qwen2.5-7B-Instruct-4bit</string>
 
         <!-- ClickHouse (remote) -->
         <key>CLICKHOUSE_HOST</key>

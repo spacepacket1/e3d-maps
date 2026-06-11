@@ -86,6 +86,35 @@ def test_base_agent_catches_invalid_json():
         agent.run(fixture_context())
 
 
+@pytest.mark.parametrize(
+    "wrapper",
+    [
+        "```json\n{body}\n```",
+        "```\n{body}\n```",
+        "  ```json\n{body}\n```  ",
+        "```json\n{body}```",
+    ],
+)
+def test_base_agent_strips_code_fences(wrapper):
+    payload = navigation_signal_payload()
+    fenced = wrapper.format(body=json.dumps(payload))
+    client = StubQwenClient(fenced)
+    agent = BaseAgent(
+        agent_name="test_agent",
+        question_template="Where is capital likely moving over the next {time_horizon_hours} hours?",
+        system_prompt="Return JSON only.",
+        agent_prompt="Use the provided context.",
+        qwen_client=client,
+        signal_type="capital_migration",
+        adapter_name="base-v0",
+    )
+
+    result = agent.run(fixture_context())
+
+    assert result.navigation_signal is not None
+    assert result.navigation_signal.signal_type == "capital_migration"
+
+
 def test_base_agent_rejects_invalid_schema_output():
     invalid_payload = navigation_signal_payload()
     invalid_payload.pop("answer")
