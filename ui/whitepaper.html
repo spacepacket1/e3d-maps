@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E3D Maps — Navigation Intelligence for the Autonomous Capital Age</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Tokens ─────────────────────────────────────────────────── */
+    :root {
+      --bg:          #f3efe7;
+      --surface:     #fdfaf4;
+      --border:      rgba(61, 45, 30, 0.13);
+      --text:        #1c1410;
+      --muted:       #6a5e52;
+      --accent:      #0a7f68;
+      --accent-soft: rgba(10, 127, 104, 0.10);
+      --warn:        #8d5e12;
+      --shadow:      0 28px 64px rgba(69, 54, 38, 0.09);
+      --serif:       "Playfair Display", Georgia, "Times New Roman", serif;
+      --sans:        "Inter", system-ui, -apple-system, sans-serif;
+      --mono:        "Menlo", "Monaco", "Cascadia Code", monospace;
+      --max:         720px;
+      --page-pad:    clamp(24px, 5vw, 80px);
+    }
+
+    /* ── Reset & base ───────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+
+    body {
+      font-family: var(--sans);
+      font-size: 1rem;
+      line-height: 1.75;
+      color: var(--text);
+      background: var(--bg);
+      padding: 0 var(--page-pad) 100px;
+    }
+
+    /* ── Layout wrapper ─────────────────────────────────────────── */
+    .wp {
+      max-width: var(--max);
+      margin: 0 auto;
+    }
+
+    /* ── Hero ───────────────────────────────────────────────────── */
+    .hero {
+      padding: 80px 0 64px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 72px;
+    }
+    .eyebrow {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-family: var(--serif);
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      line-height: 1.18;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 24px;
+    }
+    .lead {
+      font-size: 1.15rem;
+      line-height: 1.7;
+      color: var(--muted);
+      max-width: 620px;
+      margin-bottom: 32px;
+    }
+    .meta {
+      display: flex;
+      gap: 12px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+    .meta-sep { opacity: 0.35; }
+
+    /* ── Sections ───────────────────────────────────────────────── */
+    .section {
+      margin-bottom: 72px;
+    }
+    .section-header {
+      margin-bottom: 28px;
+    }
+    .section h2 {
+      font-family: var(--serif);
+      font-size: clamp(1.35rem, 3vw, 1.9rem);
+      font-weight: 700;
+      line-height: 1.25;
+      color: var(--text);
+      margin-top: 8px;
+    }
+    .section p {
+      margin-bottom: 18px;
+      color: var(--text);
+    }
+    .section p:last-child { margin-bottom: 0; }
+
+    /* ── Pull quote ─────────────────────────────────────────────── */
+    blockquote {
+      border-left: 3px solid var(--accent);
+      margin: 36px 0;
+      padding: 20px 0 20px 28px;
+    }
+    blockquote p {
+      font-family: var(--serif);
+      font-size: 1.15rem;
+      font-style: italic;
+      line-height: 1.55;
+      color: var(--text);
+      margin-bottom: 10px !important;
+    }
+    blockquote cite {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      font-style: normal;
+    }
+
+    /* ── Callout ────────────────────────────────────────────────── */
+    .callout {
+      background: var(--accent-soft);
+      border: 1px solid rgba(10, 127, 104, 0.18);
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin: 32px 0;
+    }
+    .callout p {
+      color: #0b5446;
+      font-size: 0.95rem;
+    }
+
+    /* ── Insight box (new, for dual-witness / calibration) ──────── */
+    .insight {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px 32px;
+      margin: 32px 0;
+      box-shadow: var(--shadow);
+    }
+    .insight h4 {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    .insight p { font-size: 0.95rem; margin-bottom: 14px; }
+    .insight p:last-child { margin-bottom: 0; }
+
+    /* ── Signal-type list ───────────────────────────────────────── */
+    .signal-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin: 24px 0;
+    }
+    .signal-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.82rem;
+    }
+    .signal-chip strong {
+      display: block;
+      font-weight: 600;
+      color: var(--accent);
+      font-family: var(--mono);
+      margin-bottom: 4px;
+      font-size: 0.78rem;
+    }
+    .signal-chip span { color: var(--muted); }
+
+    /* ── Flywheel diagram ───────────────────────────────────────── */
+    .flywheel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px 36px;
+      margin: 36px 0;
+    }
+    .flywheel h4 {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+    .flywheel-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    .flywheel-arrow {
+      color: var(--accent);
+      font-size: 1.1rem;
+      line-height: 1.5;
+      flex-shrink: 0;
+      width: 20px;
+    }
+    .flywheel-text {
+      font-size: 0.9rem;
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .flywheel-text em { color: var(--muted); font-style: normal; font-size: 0.82rem; }
+
+    /* ── Horizon cards (v2 vision) ──────────────────────────────── */
+    .horizons {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      margin: 32px 0;
+    }
+    .horizon-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px 28px;
+    }
+    .horizon-card h4 {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    .horizon-card p { font-size: 0.9rem; color: var(--muted); margin-bottom: 0; }
+
+    /* ── CTA footer ─────────────────────────────────────────────── */
+    .cta-section {
+      padding-top: 56px;
+      border-top: 1px solid var(--border);
+      margin-top: 80px;
+    }
+    .cta-section h2 {
+      font-family: var(--serif);
+      font-size: 1.6rem;
+      margin-bottom: 32px;
+    }
+    .cta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+    }
+    .cta-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 22px;
+    }
+    .cta-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .cta-url {
+      display: block;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--accent);
+      margin-bottom: 8px;
+      word-break: break-all;
+    }
+    .cta-desc { font-size: 0.82rem; color: var(--muted); }
+
+    /* ── Closing ────────────────────────────────────────────────── */
+    .closing {
+      text-align: center;
+      padding: 64px 0 0;
+      font-family: var(--serif);
+      font-size: 1.5rem;
+      font-style: italic;
+      color: var(--muted);
+    }
+
+    /* ── Print styles ───────────────────────────────────────────── */
+    @media print {
+      :root { --page-pad: 0; }
+      body {
+        background: #fff;
+        padding: 0;
+        font-size: 10.5pt;
+        line-height: 1.65;
+        color: #111;
+      }
+      .wp { max-width: 100%; }
+      .hero { padding: 32pt 0 24pt; }
+      .hero h1 { font-size: 22pt; }
+      .lead { font-size: 11pt; }
+      .section { margin-bottom: 32pt; page-break-inside: avoid; }
+      .section h2 { font-size: 15pt; }
+      blockquote { border-left-color: #0a7f68; }
+      .callout, .insight, .flywheel, .horizon-card, .cta-card { box-shadow: none; border: 0.75pt solid #ccc; }
+      .signal-grid { grid-template-columns: repeat(3, 1fr); }
+      .cta-grid { grid-template-columns: repeat(3, 1fr); }
+      a { color: inherit; text-decoration: none; }
+
+      @page {
+        margin: 18mm 22mm;
+        size: A4;
+      }
+      @page :first { margin-top: 14mm; }
+    }
+  </style>
+</head>
+<body>
+<article class="wp">
+
+  <!-- ── Hero ──────────────────────────────────────────────────── -->
+  <header class="hero">
+    <p class="eyebrow">Whitepaper · June 2026</p>
+    <h1>E3D Maps: Navigation Intelligence<br>for the Autonomous Capital Age</h1>
+    <p class="lead">
+      How a navigation layer for on-chain agents transforms autonomous capital
+      deployment from a blind guess into a GPS-guided certainty — and why the
+      next generation of financial autonomy runs on real-time maps, not intuition.
+    </p>
+    <div class="meta">
+      <span>maps.e3d.ai</span>
+      <span class="meta-sep">·</span>
+      <span>E3D Ecosystem</span>
+      <span class="meta-sep">·</span>
+      <span>Confidential — For Authorized Agents and Operators</span>
+    </div>
+  </header>
+
+  <!-- ── 1. Executive Summary ───────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">Executive Summary</p>
+      <h2>The Map Has Arrived</h2>
+    </div>
+
+    <p>For most of human financial history, capital moved blind. Traders stared at charts and hoped. Algorithms fired at shadows. Even the most sophisticated quantitative funds were essentially driving cross-country at night with their headlights off — reacting to what they could see one second at a time, with no view of what lay around the next curve.</p>
+
+    <p>On-chain capital is different in every way that matters — except that one. Ethereum and its expanding multichain universe constitute the most transparent financial road network ever built. Every transaction is a vehicle. Every protocol is an intersection. Every wallet is a driver. The roads are lit, the traffic is real, and the data is public. What was missing was the map.</p>
+
+    <p>E3D Maps is the map.</p>
+
+    <p>Built as the navigation intelligence layer for autonomous agents operating across the E3D ecosystem, E3D Maps transforms raw on-chain data into structured, machine-readable navigation signals — real-time answers to the questions every agent must answer before moving capital: Where is money flowing? Which routes are congested? Which destinations are gaining probability? What hazards lie ahead? And above all: what should I do next?</p>
+
+    <p>But E3D Maps is more than a GPS that whispers directions to one car. As the system matures, it becomes the shared coordinate system — the air-traffic control layer — that all autonomous capital depends on. The difference between ten thousand agents independently guessing their routes and ten thousand agents consulting a living map that knows where every other agent is going.</p>
+
+    <blockquote>
+      <p>You wouldn't drive from New York to Los Angeles without GPS. Why would you deploy capital across a $3 trillion on-chain ecosystem without a navigation layer?</p>
+      <cite>E3D Ecosystem</cite>
+    </blockquote>
+  </section>
+
+  <!-- ── 2. The Problem ─────────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">The Problem</p>
+      <h2>Driving Blind at Highway Speed</h2>
+    </div>
+
+    <p>Cast your mind back to the year 2006. You're in an unfamiliar city, it's raining, and you're late. You have a printout from MapQuest that takes you to the wrong exit, and by the time you find a gas station to ask for directions, you've missed your turn twice. Your frustration is not a personal failing. It is the result of operating a complex spatial navigation task without real-time intelligence. The roads were there. The destination was there. What was missing was the layer between them.</p>
+
+    <p>That was driving before Google Maps. That is on-chain capital deployment today.</p>
+
+    <p>A trading agent wakes up. Ethereum's L2 ecosystem has generated 40 million transactions in the last 24 hours. Whale wallets have moved $800 million across protocols. Stablecoin mint and burn events have spiked. Three major liquidity pools have rebalanced. Exchange netflows have shifted direction four times. Bridge volumes on Arbitrum are at a 30-day high.</p>
+
+    <p>What does any of it mean? Which data points are leading indicators, and which are noise from bots? Is capital rotating into ETH, or is the whale wallet movement a false positive from an OTC desk? Should the agent increase exposure or hedge?</p>
+
+    <div class="callout">
+      <p>The on-chain world is not short on data. It is short on navigation. The difference between data and navigation is the difference between a satellite photo of a city and a turn-by-turn route to your destination.</p>
+    </div>
+  </section>
+
+  <!-- ── 3. The Analogy ─────────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">The Core Analogy</p>
+      <h2>Tesla Full Self-Driving Meets Google Maps for On-Chain Capital</h2>
+    </div>
+
+    <p>Imagine Tesla's Full Self-Driving system. It is a machine — extraordinarily capable, continuously learning, operating at speeds no human can match. But FSD does not navigate by instinct. It navigates by perception fused with intelligence. The car has sensors: cameras, radar, LIDAR. Those sensors see the road. But seeing the road is not the same as understanding the road. FSD needs to know not just what is directly in front of it, but what traffic looks like three miles ahead, whether the highway on-ramp is congested, whether there is a construction closure on its planned route.</p>
+
+    <p>That intelligence comes from a navigation system. Without it, FSD is powerful but directionless — capable of executing a drive, but unable to plan one.</p>
+
+    <p>Now substitute the FSD vehicle with an autonomous trading agent. The roads are Ethereum, Base, Arbitrum, and every other chain in the multichain universe. The traffic is the trillions in on-chain capital that flows across protocols, DEXes, bridges, wallets, and exchanges every day. The destinations are assets, protocols, liquidity positions, yield opportunities. And the congestion, the hazards, the closures — those are the liquidity crunches, exchange outflow spikes, bridge delays, and smart money rotations that can turn a high-conviction trade into a catastrophic wrong-way drive.</p>
+
+    <blockquote>
+      <p>An autonomous agent without a navigation layer is like a Tesla with FSD but no GPS — technically capable of driving, but operationally lost.</p>
+      <cite>E3D Maps Architecture Principles</cite>
+    </blockquote>
+
+    <p>E3D Maps is the navigation system that turns capable agents into directed agents. It does not drive the car. It tells the car where to go, what to avoid, and how confident it should be in every decision — in real time, at machine speed, with verifiable evidence.</p>
+  </section>
+
+  <!-- ── 4. The Architecture ─────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">The Architecture</p>
+      <h2>How E3D Maps Works</h2>
+    </div>
+
+    <p>E3D Maps is a purpose-built intelligence layer, not a data pipe. The distinction matters enormously. Data pipes deliver raw information. Intelligence layers deliver answers.</p>
+
+    <p>At the input layer, E3D Maps consumes stories from the E3D platform — structured narratives derived from on-chain events, wallet behaviors, exchange flows, stablecoin activity, and whale movements. These stories are the sensors. Each one records what happened. E3D Maps' job is to synthesize them into a prediction of what happens next.</p>
+
+    <p>At the processing layer, Maps agents interpret incoming stories as navigation evidence. A surge in stablecoin minting is a potential leading indicator of capital ready to deploy. Three whale wallets accumulating the same asset is a confidence-weighted signal that a destination is gaining conviction. Exchange outflows from a specific asset are a potential hazard on the route to that asset. Agents synthesize this evidence into <strong>NavigationSignals</strong>: machine-readable, schema-validated objects that answer specific navigation questions with a confidence score, a risk level, a recommended action, and a time horizon.</p>
+
+    <div class="callout">
+      <p>Every signal that leaves E3D Maps is schema-validated, confidence-scored, and evidence-backed. Agents do not guess. They navigate.</p>
+    </div>
+
+    <p>E3D Maps produces ten distinct signal types, each answering a different navigational question:</p>
+
+    <div class="signal-grid">
+      <div class="signal-chip"><strong>capital_migration</strong><span>Where is capital moving from and to?</span></div>
+      <div class="signal-chip"><strong>destination_prediction</strong><span>Which destinations are gaining probability?</span></div>
+      <div class="signal-chip"><strong>route_hazard</strong><span>Which routes are becoming dangerous?</span></div>
+      <div class="signal-chip"><strong>route_closure</strong><span>Which paths are becoming unavailable?</span></div>
+      <div class="signal-chip"><strong>route_emergence</strong><span>Which new routes are opening?</span></div>
+      <div class="signal-chip"><strong>congestion_formation</strong><span>Where is crowding forming?</span></div>
+      <div class="signal-chip"><strong>liquidity_forecast</strong><span>Where is liquidity thinning or building?</span></div>
+      <div class="signal-chip"><strong>capital_conviction</strong><span>Is this a test position or full commitment?</span></div>
+      <div class="signal-chip"><strong>narrative_acceleration</strong><span>Is the narrative gaining or losing velocity?</span></div>
+      <div class="signal-chip"><strong>agent_swarm_formation</strong><span>Are unrelated agents converging?</span></div>
+    </div>
+  </section>
+
+  <!-- ── 5. The Flow Graph ───────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">The Living Map</p>
+      <h2>A Graph You Can Navigate, Not a List You Can Read</h2>
+    </div>
+
+    <p>A list of roads is not a map. A map is a navigable representation of how everything connects — where you are, where you could go, and what stands between you and the destination.</p>
+
+    <p>Early versions of E3D Maps surfaced a <em>TrafficState</em> — a flat snapshot of dominant flows, congestion zones, and top destinations, frozen at a point in time. Useful, but like reading a printed timetable. What agents actually need is to query the terrain dynamically: <em>"What flows into ETH DeFi right now? What's two hops downstream of stablecoins? Is the route I was using yesterday still open?"</em></p>
+
+    <p>The <strong>FlowGraph</strong> answers those questions. Every capital location — sectors, protocols, asset clusters, exchanges, stablecoin pools — is a node. Every active capital flow between them is a directed edge, carrying strength, confidence, and hazard attributes derived from live NavigationSignals. The graph is persistent and append-only: each cycle produces a new snapshot, and the delta between snapshots surfaces route emergence and route closure automatically — the map detects new roads and closed roads without a separate agent asking the question.</p>
+
+    <div class="insight">
+      <h4>Navigating the Graph</h4>
+      <p><code>GET /api/maps/graph/around/ETH_DEFI</code> returns a live subgraph: what is flowing in, what is flowing out, what hazards are on adjacent edges, and which neighboring nodes are gaining momentum. This is the query a navigator actually runs — not "show me all signals" but "show me the terrain around my destination."</p>
+      <p>The FlowGraph also unlocks second-derivative intelligence: edges that are strengthening, edges that are fading, and routes that have just opened or just closed. That is the <em>narrative_acceleration</em> signal — not just where capital is going, but whether it is accelerating or decelerating toward it.</p>
+    </div>
+  </section>
+
+  <!-- ── 6. The Dual-Witness Scorer ─────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">The Integrity Layer</p>
+      <h2>A Courtroom, Not a Classroom — The Dual-Witness Architecture</h2>
+    </div>
+
+    <p>Getting ground truth right is the most important engineering problem in the entire system. If the label is wrong, the adapter learns the wrong lesson, and every subsequent prediction inherits the error. A compounding data asset can compound brilliance or it can compound rot — the difference is entirely in how honestly you score yourself.</p>
+
+    <p>The naive approach — checking whether confirming stories fired after a prediction — contains a subtle but fatal flaw. The story generator and the signal generator read the same evidence. A signal that was correct for the wrong reason (the motivating evidence <em>persisted</em> rather than the prediction <em>realized</em>) will score as correct under a story-only rubric. The adapter trains on a lie and learns to produce confident signals whenever evidence lingers — not whenever predictions come true.</p>
+
+    <p>The solution is the <strong>dual-witness architecture</strong>: two independent scorers that cannot share primary evidence, run in parallel, and whose disagreement is itself a signal.</p>
+
+    <div class="insight">
+      <h4>The Two Witnesses</h4>
+      <p><strong>The Heuristic Witness</strong> uses a story-based rubric — transparent, debuggable, auditable. It checks whether confirming stories fired, whether exchange flows matched the predicted direction, whether stablecoin activity was consistent. All rubric weights are configurable from environment variables so they can be tuned from backtests rather than hunches.</p>
+      <p><strong>The Quantitative Witness</strong> is architecturally forbidden from reading stories. It measures net flow magnitude and direction from raw exchange-flow and stablecoin series only. It asks not <em>did a story confirm this?</em> but <em>did the numbers actually move in the predicted direction?</em></p>
+    </div>
+
+    <p>Both scorers run on every prediction. When they agree, the verdict is confident and clean. When they diverge by more than the configured threshold, the outcome is flagged <strong>DISPUTED</strong> — excluded from the training export by default, routed to the review queue, never used to teach the adapter until a human or a secondary audit resolves the disagreement.</p>
+
+    <p>Think of it as a courtroom. Two independent witnesses, examined separately, testifying from different evidence. If they tell the same story, the verdict stands. If they sharply contradict each other, the judge does not force a verdict — the case goes back for review, and a contested judgment never corrupts the law books.</p>
+
+    <p>Every <code>PredictionOutcome</code> also records <code>consumer_exposure</code>: how many downstream agents acted on this signal before its evaluation window closed. This is the defense against the subtlest failure mode in any signal product — <strong>reflexivity</strong>. When many agents act on the same signal, they create the very outcome the signal predicted. The heuristic scorer rewards this as accuracy. The training loop learns to produce herd-inducing signals. The map gradually becomes a stampede coordinator rather than a navigator. By tracking exposure from day one, E3D Maps can decompose genuine navigational intelligence from self-fulfilling prophecy — and eventually surface a new signal type, <em>map_induced_congestion</em>, that warns agents when a route is elevated-risk specifically because too many Maps consumers are already on it.</p>
+
+    <blockquote>
+      <p>The question is not whether agents will navigate on-chain capital. They already do. The question is whether they do it with a map that scores itself honestly.</p>
+      <cite>E3D Maps</cite>
+    </blockquote>
+  </section>
+
+  <!-- ── 7. Calibration ─────────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">The Trust Surface</p>
+      <h2>Every Signal Vendor Claims Accuracy. E3D Maps Proves It.</h2>
+    </div>
+
+    <p>The most credible sentence E3D Maps can say to any consumer agent is not <em>"our signals are good."</em> It is: <em>when we say 0.8 confidence, we are right 78% of the time. Here is the curve. Here is the sample size. Here is how it has trended over the last 30 days.</em></p>
+
+    <p>That number — the calibration curve — is not a marketing claim. It is an empirically derived, continuously updated, auditable statement about the relationship between Maps' stated confidence and reality. No competitor can copy it because it requires the realized-outcome dataset that only comes from running the system honestly for months and scoring every prediction with the dual-witness architecture.</p>
+
+    <p>The <strong>reliability diagram</strong> is the most honest visualization in quantitative finance: predicted confidence on the x-axis, realized accuracy on the y-axis. A perfectly calibrated system is a diagonal line. Most signal products refuse to show it. E3D Maps makes it the headline of the human supervision interface.</p>
+
+    <div class="insight">
+      <h4>What Calibration Unlocks for Consumer Agents</h4>
+      <p>A 0.75 signal from a type that calibrates at 0.74 realized accuracy is a very different input than a 0.75 signal from a type that calibrates at 0.41. Once calibration curves are published, consumer agents can weight their consumption by proven track record — not just by stated confidence. The <code>final_signal_utility_score</code> appears on every signal response, computed from prediction accuracy, economic utility, risk reduction, and execution-adjusted performance — separating bad navigation from bad driving.</p>
+    </div>
+  </section>
+
+  <!-- ── 8. The Compounding Flywheel ────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">The Moat</p>
+      <h2>The Dataset That Cannot Be Purchased</h2>
+    </div>
+
+    <p>The real product of E3D Maps is not any individual NavigationSignal. It is the dataset that accumulates beneath them — a proprietary, self-labeling corpus that cannot be scraped, synthesized, or purchased. It can only be earned by running the system honestly and scoring every prediction ruthlessly.</p>
+
+    <div class="flywheel">
+      <h4>The Compounding Loop</h4>
+      <div class="flywheel-row"><span class="flywheel-arrow">→</span><span class="flywheel-text">E3D Stories + theses + wallet data + market data <em>(the sensors)</em></span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">→</span><span class="flywheel-text">Maps agents generate NavigationSignals with stated confidence</span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">→</span><span class="flywheel-text">Consumer agents act — trading, treasury, research</span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">→</span><span class="flywheel-text">Dual-witness outcome scoring: did it realize? <em>(exogenous vs. induced)</em></span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">→</span><span class="flywheel-text">Calibration curves updated; utility scores computed</span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">→</span><span class="flywheel-text">Quality-gated training export: disputed labels excluded</span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">→</span><span class="flywheel-text">Maps adapter fine-tuned on honest examples only</span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">→</span><span class="flywheel-text">Sharper NavigationSignals, better-calibrated confidence</span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">↺</span><span class="flywheel-text"><em>Repeat — each revolution produces a slightly smarter navigator</em></span></div>
+    </div>
+
+    <p>The system is designed to be wrong early and right later — to fail with precision, learn from the failure, and accumulate an advantage that compounds with every cycle. The training data asset at the center of that loop is:</p>
+
+    <div class="callout">
+      <p><strong>agent question + E3D evidence + Maps prediction + stated confidence + realized outcome (dual-witness scored) + consumer exposure + downstream trading utility + verdict + calibration curve position.</strong></p>
+      <p>That is not a database. It is a flywheel. And it belongs entirely to the entity that runs it honestly.</p>
+    </div>
+  </section>
+
+  <!-- ── 9. Expanding Vision ─────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">The Horizon</p>
+      <h2>Where This Ends Up — The Air-Traffic Control Layer</h2>
+    </div>
+
+    <p>The architecture described above — dual-witness scoring, persistent FlowGraph, published calibration — creates capabilities that, with careful extension, transform E3D Maps from an intelligence layer into something with broader structural significance. These are not immediate targets. They are the natural destination of the design, and they become possible only once trust is established through honest calibration history.</p>
+
+    <div class="horizons">
+
+      <div class="horizon-card">
+        <h4>The Directions API — Navigation on Request</h4>
+        <p>Today Maps broadcasts. The radical inversion is request-response: <code>POST /api/maps/route</code> with your position, size, risk tolerance, and time horizon returns a ranked set of concrete routes — venue sequence, expected slippage corridor, hazard exposure per leg. Every car gets a personalized route, not just access to the traffic report. Every query becomes a signal itself, feeding demand-side intelligence.</p>
+      </div>
+
+      <div class="horizon-card">
+        <h4>The Query Stream — Intent Before the Transaction</h4>
+        <p>The access logs of a widely-adopted Maps API are more valuable than the signals themselves. An agent asking "where is capital going in the next 4 hours?" is declaring intent before the transaction exists. Aggregated and k-anonymized, this pre-transaction layer has no on-chain equivalent. It is Waze's actual edge: not the map, but the drivers feeding it.</p>
+      </div>
+
+      <div class="horizon-card">
+        <h4>Hazard Signals as Insurance Primitives</h4>
+        <p>A <code>bridge_risk</code> signal at 0.71 confidence over a 24-hour window, backed by 90 days of calibration history, is a parameter a lending protocol can use to auto-tighten LTV ratios. The PredictionOutcome scoring loop is the loss-experience data an underwriter needs. Hazard predictions grow more valuable as more entities consume them — the rare non-reflexive revenue line.</p>
+      </div>
+
+      <div class="horizon-card">
+        <h4>The Road Authority Market</h4>
+        <p>The same TrafficState and hazard machinery answers different questions for the people who own the roads: L2 teams monitoring whether their chain is gaining or losing traffic, DAO treasuries tracking liquidity route health, market-structure researchers building systemic-risk models. Same agents, same signals, different question queue — a recurring product with essentially no marginal build cost and customers with long horizons and no alpha-decay dynamics.</p>
+      </div>
+
+      <div class="horizon-card">
+        <h4>The Coordination Layer — Air-Traffic Control, Not Navigation</h4>
+        <p>The most radical vision: Maps is not just a map agents read. It is a coordination substrate they register with. Consumer agents post <code>RouteIntent</code> — a declared plan to move capital — and Maps performs slot allocation and deconfliction, preventing E3D's own fleet from bidding against itself and, eventually, enabling third-party agents to negotiate around each other's flow. <em>Navigation</em> is a feature. <em>The coordination layer agents must register with to avoid colliding</em> is a network-effect chokepoint — the TCP/IP move for autonomous finance.</p>
+      </div>
+
+    </div>
+
+    <blockquote>
+      <p>We didn't replace the roads. We mapped them. And once you have the map — and the discipline to score it honestly — everything changes.</p>
+      <cite>E3D Maps</cite>
+    </blockquote>
+  </section>
+
+  <!-- ── 10. The API ─────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">The API</p>
+      <h2>Built for Agents First</h2>
+    </div>
+
+    <p>E3D Maps is not a human dashboard with an API bolted on. It is an agent-native intelligence system with a human-readable interface layered over it. The primary consumers are machines. The primary data format is structured JSON. The primary interaction pattern is polling — agents query the state, consume the signals, act, and poll again.</p>
+
+    <p>The API surface is deliberately minimal and composable: <code>/api/maps/state</code> returns the full current map in one call. <code>/api/maps/signals</code> with filters returns precision intelligence for any asset, chain, signal type, confidence threshold, or time horizon combination. <code>/api/maps/predictions</code> surfaces forward-looking destination probability. <code>/api/maps/hazards</code> surfaces everything an agent needs to avoid bad routes. <code>/api/maps/graph/around/:node</code> returns the live terrain around any destination in the FlowGraph. <code>/api/maps/calibration</code> returns the reliability curves that prove the system's track record.</p>
+
+    <p>Navigation should be infrastructure, not overhead.</p>
+  </section>
+
+  <!-- ── CTA footer ─────────────────────────────────────────────── -->
+  <section class="cta-section">
+    <p class="eyebrow">Access</p>
+    <h2>Get Started</h2>
+    <div class="cta-grid">
+      <div class="cta-card">
+        <p class="cta-label">Live API</p>
+        <code class="cta-url">maps.e3d.ai/api/maps/state</code>
+        <p class="cta-desc">Query the current traffic state right now. No authentication required for authorized agents.</p>
+      </div>
+      <div class="cta-card">
+        <p class="cta-label">Calibration</p>
+        <code class="cta-url">maps.e3d.ai/calibration</code>
+        <p class="cta-desc">Reliability curves, hit-rate history, and utility score distributions. The proof, not the pitch.</p>
+      </div>
+      <div class="cta-card">
+        <p class="cta-label">API Reference</p>
+        <code class="cta-url">maps.e3d.ai/api-docs</code>
+        <p class="cta-desc">Full endpoint documentation with request and response examples for every Maps route.</p>
+      </div>
+      <div class="cta-card">
+        <p class="cta-label">Story Taxonomy</p>
+        <code class="cta-url">maps.e3d.ai/docs</code>
+        <p class="cta-desc">What each story type means, how agents use it, and which NavigationSignals it supports.</p>
+      </div>
+    </div>
+  </section>
+
+  <p class="closing">The roads are Ethereum. The vehicles are your agents.<br>The map is E3D Maps.</p>
+
+</article>
+</body>
+</html>

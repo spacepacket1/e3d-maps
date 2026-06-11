@@ -9,7 +9,7 @@
 **Primary Runtime:** Qwen base model with a Maps-specific adapter  
 **Primary Object:** `NavigationSignal`  
 **Target Consumers:** trading agents, treasury agents, research agents, future third-party agents, and human supervisors  
-**Spec Version:** v2  
+**Spec Version:** v3  
 
 ---
 
@@ -34,31 +34,39 @@ Follow these rules:
 
 ## 1. Executive Summary
 
-E3D Maps is a separate application and agentic intelligence layer that consumes existing E3D stories, theses, wallet intelligence, market intelligence, transaction data, and trading/action/outcome records to generate forward-looking navigation intelligence for autonomous finance.
+Every city has sensors and every city has a map. The sensors tell you a car turned left on Fifth Avenue two seconds ago. The map tells you that at this hour, in this weather, the bridge is jammed and the fastest route runs three blocks south. E3D Maps is the map — not the sensors.
 
-The current E3D story pipeline detects what happened on-chain. E3D Maps predicts what is likely to happen next.
+The E3D story pipeline is a city-wide sensor grid: deterministic, precise, always watching. When a whale moves, when stablecoin supply mints at scale, when exchange inflows spike — the story pipeline sees it and records it. That is invaluable. But sensors answer the past. Capital moves faster than any analyst can read a dashboard, and the autonomous agents that will dominate on-chain finance in the next decade are not reading dashboards at all.
 
-The core analogy:
+E3D Maps is a separate application and agentic intelligence layer that consumes existing E3D stories, theses, wallet intelligence, market intelligence, transaction data, and trading/action/outcome records to generate forward-looking navigation intelligence for autonomous finance. It reads every sensor reading, synthesizes the scene, and answers the question that matters to an agent about to act:
+
+*Where is capital moving, and which routes are open, congested, or closing?*
+
+The extended analogy:
 
 ```text
-Ethereum = road network
-Transactions = traffic
-Wallets = vehicles
-Smart contracts and protocols = destinations
-Liquidity = fuel
-Agents = autonomous vehicles
-E3D Maps = navigation intelligence layer
+Ethereum         = road network
+Transactions     = traffic
+Wallets          = vehicles
+Protocols / DeFi = destinations
+Liquidity        = fuel
+Agents           = autonomous vehicles
+E3D Stories      = traffic sensors and incident reports
+E3D Maps         = navigation intelligence layer — the GPS that synthesizes it all
+E3D Trading      = the driver making real-time decisions from the navigator's output
 ```
 
-E3D Maps is not primarily a dashboard. The product is machine-readable situational awareness for agents.
+But E3D Maps is more than a GPS that whispers directions to one car. As the system matures, it becomes the shared coordinate system — the air-traffic control layer — that all autonomous capital depends on. It is the difference between ten thousand cars independently guessing their routes and ten thousand cars consulting a living map that knows where every other car is going.
+
+E3D Maps is not primarily a dashboard. The product is machine-readable situational awareness for agents. The human UI at `maps.e3d.ai` is a supervision surface and a demonstration window into a system that runs continuously, speaks in strict JSON, and was designed from the first line of code to be consumed by machines.
 
 ---
 
 ## 2. Core Product Thesis
 
-Autonomous financial agents will operate faster than human traders and analysts. These agents need predictive, machine-readable intelligence before they act.
+Autonomous financial agents will operate faster than human traders and analysts by orders of magnitude. Speed without intelligence is just faster collisions. These agents need predictive, machine-readable intelligence before they act — a navigator, not a rearview mirror.
 
-The primary question changes from:
+The fundamental question this system is built to answer shifts from:
 
 ```text
 What happened?
@@ -67,10 +75,15 @@ What happened?
 to:
 
 ```text
-Given the current on-chain scene, what is likely to happen next, and what route should an agent consider?
+Given the current on-chain scene, what is likely to happen next —
+and what route should an agent seriously consider?
 ```
 
-E3D Maps exists to answer that question.
+That shift from observation to prediction, from sensor to navigator, is the entire product.
+
+There is a second shift that takes longer to appreciate. Every prediction E3D Maps makes is eventually scored against reality. Every score becomes a training example. Every training example makes the next prediction sharper. This is not a dashboard that ages into irrelevance — it is a system that compounds. The proprietary dataset it accumulates — *question, evidence, prediction, confidence, realized outcome, downstream trading utility, verdict* — is a moat that cannot be purchased or replicated. It can only be earned by running the system honestly and scoring it ruthlessly.
+
+That dataset is the real product. The NavigationSignals are the output today. The trained Maps adapter, calibrated on thousands of realized outcomes with proven utility scores, is the output tomorrow.
 
 ---
 
@@ -149,24 +162,30 @@ Set `adapter: "base-v0"` in NavigationSignal records generated before the adapte
 
 ---
 
-## 3.5 Prediction Outcome Scoring Rubric
+## 3.5 Prediction Outcome Scoring — The Dual-Witness Architecture
 
-The `score_pending_predictions` job (Phase 9) requires a concrete rubric. The agent alone cannot determine whether a prediction was correct — the job needs a heuristic ground truth.
+Getting ground truth right is the most important engineering problem in the entire system. If the label is wrong, the adapter learns the wrong lesson, and every subsequent prediction inherits the error. A compounding data asset can compound brilliance or it can compound rot — the difference is entirely in how honestly you score yourself.
 
-Use this v1 rubric for `capital_migration` and `destination_prediction` signals:
+The naive approach — ask whether confirming stories fired after the signal — contains a subtle but fatal flaw. The story generator and the signal generator read the same evidence. A signal that was correct for the wrong reason (the motivating evidence *persisted* rather than the prediction *realized*) will score as correct under a story-only rubric. The adapter trains on a lie and learns to produce confident signals whenever evidence lingers, not whenever predictions come true.
 
-**Inputs to the scoring job:**
+The solution is the **dual-witness architecture**: two independent scorers that cannot share primary evidence, run in parallel, and whose disagreement is itself a signal.
+
+### The Heuristic Witness (Story-Based)
+
+The first scorer uses the v1 heuristic rubric — the tried-and-true story matching approach that is transparent, debuggable, and easy to audit:
+
+**Inputs:**
 
 ```text
 - The NavigationSignal's origin, destination, time_horizon_hours, and confidence
-- Stories generated after the signal's created_at and within the evaluation window
+- Stories generated after signal creation and within the evaluation window
 - Exchange flow summaries for the same window
 - Stablecoin activity summaries for the same window
 ```
 
-**Scoring heuristic:**
+**Scoring rubric (configurable via env vars, not hard-coded):**
 
-| Condition | Score |
+| Condition | Default Weight |
 |---|---|
 | Stories with matching origin/destination fired within the window | +0.4 |
 | Exchange flow direction matches predicted flow direction | +0.3 |
@@ -174,11 +193,34 @@ Use this v1 rubric for `capital_migration` and `destination_prediction` signals:
 | No contradicting evidence | +0.1 |
 | Contradicting story or flow evidence | -0.3 per source |
 
-Sum to a `prediction_accuracy` float. Cap at 1.0, floor at 0.0.
+All weights are configurable: `MAPS_RUBRIC_WEIGHT_STORIES`, `MAPS_RUBRIC_WEIGHT_EXCHANGE`, `MAPS_RUBRIC_WEIGHT_STABLECOIN`, `MAPS_RUBRIC_WEIGHT_NO_CONTRADICTION`, `MAPS_RUBRIC_PENALTY_PER_CONTRADICTION`. This is deliberate — backtesting (Phase 12, MAPS-1203) will produce empirically validated weights to replace the launch defaults.
 
-Set `map_prediction_correct = true` if `prediction_accuracy >= 0.6`.
+### The Quantitative Witness (Flow-Series Based)
 
-This rubric is approximate. It will improve as the system accumulates labeled examples. The scoring agent (MAPS-0901) should include the raw evidence and notes so the rubric can be audited and revised.
+The second scorer is architecturally forbidden from reading stories. It works from raw quantitative series only: net flow magnitude and direction across exchange-flow and stablecoin records measured within the evaluation window. It asks not *did a story confirm this?* but *did the numbers actually move in the predicted direction?*
+
+This scorer is statistically independent of the heuristic scorer by design. It cannot self-fulfill. It cannot be fooled by persistent evidence. It measures outcomes, not narratives about outcomes.
+
+### The Dual-Witness Agreement Protocol
+
+Both scorers run on every prediction. Their outputs are preserved separately as `heuristic_accuracy` and `quantitative_accuracy` on the `PredictionOutcome` record. The blended `prediction_accuracy` is their average.
+
+When the two witnesses diverge by more than the configured threshold (default `MAPS_SCORER_DISPUTE_THRESHOLD = 0.35`), the outcome is flagged `DISPUTED`:
+
+- `map_prediction_correct` is set to `False` for disputed outcomes regardless of the blended score.
+- The outcome status is set to `OutcomeStatus.DISPUTED`.
+- Disputed outcomes are **excluded from training export by default** (see MAPS-1204).
+- The `scorer_agreement` delta is recorded on every outcome row as a system health metric.
+
+Think of it as a courtroom with two witnesses. If both witnesses tell the same story, the verdict is reliable. If they contradict each other sharply, the judge marks the case unsettled and sends it to a review queue rather than letting a contested verdict corrupt the law books.
+
+### Consumer Exposure and Reflexivity Accounting
+
+Every `PredictionOutcome` also records `consumer_exposure` — the count of downstream agents or trading actions that acted on this signal before the evaluation window closed. This field is critical for one of the subtlest failure modes in any signal product: **self-fulfillment**.
+
+When many agents act on the same signal, they create the very outcome the signal predicted. The heuristic scorer will reward this as accuracy. The training loop will learn to produce herd-inducing signals. The adapter gradually becomes a stampede coordinator rather than a navigator.
+
+`consumer_exposure` makes reflexivity measurable from day one. Over time, outcome accuracy can be decomposed into `exogenous_accuracy` (the signal was right because reality agreed) and `induced_accuracy` (the signal appeared right because enough agents acted on it to make it so). Only exogenous accuracy is a genuine measure of navigational intelligence. Separating the two is what keeps the compounding data asset compounding truth instead of compounding noise.
 
 ---
 
@@ -1960,24 +2002,27 @@ The system prompt enforces:
 Follow this exact order:
 
 ```text
-1. Create e3d-maps repo skeleton.
-2. Add schemas and tests.
-3. Add ClickHouse migrations.
-4. Add ClickHouse client with dry-run mode.
-5. Add E3D API read client.
-6. Add Qwen client and adapter manager stubs.
-7. Add BaseAgent.
-8. Add CapitalMigrationAgent first.
-9. Add runner --once --dry-run mode.
+1.  Create e3d-maps repo skeleton.
+2.  Add schemas and tests.
+3.  Add ClickHouse migrations.
+4.  Add ClickHouse client with dry-run mode.
+5.  Add E3D API read client.
+6.  Add Qwen client and adapter manager stubs.
+7.  Add BaseAgent.
+8.  Add CapitalMigrationAgent first.
+9.  Add runner --once --dry-run mode.
 10. Generate first valid NavigationSignal from fixture data.
 11. Write first NavigationSignal to ClickHouse.
 12. Add /api/maps/signals in e3d endpoint.
 13. Add minimal Maps UI to display signals.
 14. Add remaining agents.
-15. Add prediction scoring.
+15. Add prediction scoring (dual-witness architecture — see §3.5).
 16. Add trading feedback linking.
 17. Add SignalUtilityScore.
-18. Add training export.
+18. Add training export with quality gate.
+19. Add quantitative scorer and dual-scorer blending (Phase 12).
+20. Add FlowGraph and spatial query API (Phase 13).
+21. Add calibration curves and public trust surface (Phase 14).
 ```
 
 ---
@@ -1993,13 +2038,299 @@ E3D Maps v1 is successful when:
 5. Main E3D endpoint exposes `/api/maps/...`.
 6. Trading agents can consume Maps APIs without direct repo coupling.
 7. Trading actions can optionally link back to NavigationSignals.
-8. Maps can score its own predictions after the time horizon expires.
+8. Maps can score its own predictions after the time horizon expires using the dual-witness scorer.
 9. Maps can compute SignalUtilityScore from downstream outcomes.
-10. Maps can export training examples for future Maps adapter improvement.
+10. Maps can export training examples, with disputed outcomes excluded by default.
 
 ---
 
-## 21. Strategic Framing
+## 20.5 Success Criteria For v1.2
+
+E3D Maps v1.2 is the moat-building release. It is successful when:
+
+1. Every `PredictionOutcome` records both `heuristic_accuracy` and `quantitative_accuracy` as independently derived scores.
+2. Outcomes where the two scorers diverge by more than the configured threshold are flagged `DISPUTED` and excluded from the training export by default.
+3. `consumer_exposure` is tracked on every outcome — the reflexivity problem is measurable before it becomes invisible.
+4. Rubric weights are loaded from configuration, not hard-coded, enabling empirical tuning.
+5. `TrafficState` is superseded by a persistent `FlowGraph` — a live, navigable directed graph of capital routes where nodes are destinations and edges carry confidence, strength, and hazard attributes.
+6. Edge births and deaths in the `FlowGraph` directly surface `route_emergence` and `route_closure` signals, completing the signal taxonomy.
+7. The `/api/maps/graph/around/:node` endpoint answers the spatial question every agent actually asks: *what flows into and out of my destination right now?*
+8. Calibration curves are computed and published: when Maps says 0.8 confidence, the curve shows what fraction of such predictions actually realized.
+9. `final_signal_utility_score` appears on every signal in API responses so consumer agents can weight their consumption by proven track record.
+
+---
+
+## Phase 12: Outcome Scoring Rigor
+
+*The cartographer who grades their own maps with the same compass they used to draw them will always think they got it right. Phase 12 adds a second compass.*
+
+### Ticket MAPS-1201: Quantitative realized-outcome scorer
+
+**Status:** Complete.
+
+**Goal:** Score predictions from raw quantitative flow series alone, independent of story evidence.
+
+The scorer lives in `jobs/scoring/quantitative_scorer.py`. It is architecturally forbidden from reading story IDs or importing story schemas — a constraint enforced by a unit test that inspects the module source. It measures `net_flow` magnitude and direction across exchange-flow and stablecoin records to determine whether the predicted movement actually materialized in the numbers.
+
+**Acceptance Criteria:**
+- Scorer produces a `realized_score ∈ [0, 1]` from quantitative series alone.
+- Scorer never references story IDs in its computation path (enforced by test).
+- Raw measured deltas are recorded in `measured_deltas` for audit.
+- Result is clamped to `[0, 1]` regardless of series composition.
+
+---
+
+### Ticket MAPS-1202: Dual-scorer agreement and dispute flagging
+
+**Status:** Complete.
+
+**Goal:** Run both scorers, blend their outputs, and flag disagreement as a first-class signal.
+
+`PredictionOutcome` now carries:
+
+```text
+heuristic_accuracy        float | None   — story-based scorer result
+quantitative_accuracy     float | None   — flow-series scorer result
+scorer_agreement          float | None   — |heuristic - quantitative|
+scoring_method            enum           — heuristic | quantitative | blended
+consumer_exposure         int            — downstream agents that acted on this signal
+exogenous_accuracy        float | None   — accuracy when consumer_exposure == 0
+induced_accuracy          float | None   — accuracy when consumer_exposure > 0
+```
+
+When `scorer_agreement > MAPS_SCORER_DISPUTE_THRESHOLD` (default 0.35), the outcome is flagged `DISPUTED`, `map_prediction_correct` is set to `False`, and the outcome status becomes `OutcomeStatus.DISPUTED`.
+
+**Why `consumer_exposure` must be captured now:** the window to capture this cleanly is before production traffic is real. Once agents are acting on signals in volume, the reflexivity effect is already baked into the outcomes. `consumer_exposure` costs nothing to record and is impossible to reconstruct retroactively. It is the foundation for separating genuine navigational intelligence from self-fulfilling prophecy.
+
+**Acceptance Criteria:**
+- Both accuracy scores persist on every outcome row.
+- `consumer_exposure` defaults to `0` (never `null`) so fleet-level reflexivity metrics are always queryable.
+- Disputed outcomes excluded from training export by default.
+- `scorer_agreement` and exogenous/induced split are queryable as system health metrics.
+
+---
+
+### Ticket MAPS-1203: Backtest the rubric against held-out history
+
+**Goal:** Replace launch-default weights with weights validated against realized outcomes.
+
+`jobs/backtest_scoring_rubric.py` takes a held-out window of historical signals with known realized outcomes, sweeps rubric weight combinations, and reports which weighting best predicts the quantitative ground truth. All weights are configurable via `.env` — the code never contains magic numbers.
+
+**Acceptance Criteria:**
+- Weights are loaded from config, not literals.
+- Backtest report shows heuristic-vs-quantitative agreement per signal type.
+- Documented procedure for re-tuning as history accumulates.
+
+---
+
+### Ticket MAPS-1204: Training export quality gate
+
+**Goal:** Stop low-confidence ground truth from contaminating the adapter's training data.
+
+`jobs/export_training_examples.py` now excludes `DISPUTED` outcomes by default. New CLI flags:
+
+```text
+--include-disputed           Include outcomes flagged DISPUTED (excluded by default)
+--min-scorer-agreement       Require both scorers to agree within this tolerance
+```
+
+Every exported example carries a `scoring_method` provenance field so downstream consumers of the dataset know how its label was derived.
+
+**Acceptance Criteria:**
+- Disputed outcomes excluded unless explicitly included.
+- Each training example carries label provenance.
+- `--min-scorer-agreement` filters on the raw delta, passing legacy single-scorer rows through to preserve backward compatibility.
+
+---
+
+## Phase 13: TrafficState as a Flow Graph
+
+*A list of roads is not a map. A map is a navigable representation of how everything connects — where you are, where you could go, and what stands between you and the destination.*
+
+The v1 `TrafficState` is a snapshot: a flat list of dominant flows, congestion zones, and top destinations, frozen at a point in time and replaced by the next cycle's snapshot. It answers "what is currently notable" but cannot answer "what route from stablecoins to ETH DeFi looks like right now, two hops out" or "which destinations are gaining momentum vs. decelerating." Those are the questions an agent in motion actually asks.
+
+Phase 13 promotes the map metaphor from analogy to data structure.
+
+### Ticket MAPS-1301: FlowGraph schema and assembly
+
+**Goal:** Replace `TrafficState` flat lists with a persistent directed flow-graph.
+
+`schemas/flow_graph.py` introduces:
+
+- **Nodes:** capital locations — sectors, protocols, asset clusters, exchanges, stablecoin pools. Each node carries `congestion`, `hazard`, and net `inflow`/`outflow` attributes derived from active NavigationSignals.
+- **Edges:** directed flows between nodes, carrying `strength` (weak / moderate / strong), `confidence ∈ [0, 1]`, and `last_updated`.
+- **Snapshots:** each `FlowGraph` instance is append-only with explicit IDs and links to the signal IDs that produced each edge. The graph is auditable to its sources.
+
+The runner assembles a new `FlowGraph` snapshot each cycle from the current population of NavigationSignals, RoutePredictions, and TrafficState. Old snapshots are never overwritten.
+
+**Acceptance Criteria:**
+- FlowGraph validates against strict schema.
+- Each edge links to the signal IDs that produced it.
+- Snapshots are append-only with explicit IDs.
+
+---
+
+### Ticket MAPS-1302: Temporal edge dynamics
+
+**Goal:** Let the graph express acceleration and decay — the prerequisite for the deferred `narrative_acceleration` signal type.
+
+Between consecutive snapshots, the runner computes per-edge deltas: edges that strengthened, weakened, were born (route emergence), or died (route closure). These deltas directly surface `route_emergence` and `route_closure` signals without requiring the signal generator to run a separate query — the graph itself detects them.
+
+This is the second-derivative layer the v1 spec deferred: not just *where is capital flowing* but *is this flow accelerating or fading?* That question requires a baseline to compare against, and the `FlowGraph` snapshot history is that baseline.
+
+**Acceptance Criteria:**
+- Edge deltas computed without look-ahead.
+- Newly-formed and closing edges flagged in the graph.
+- `narrative_acceleration` signal type unblocked by this implementation.
+
+---
+
+### Ticket MAPS-1303: Spatial query API
+
+**Goal:** Answer the navigational questions agents actually ask.
+
+New endpoints:
+
+```text
+GET /api/maps/graph                  — current FlowGraph snapshot
+GET /api/maps/graph/around/:node     — subgraph: what flows into and out of a node, N hops
+```
+
+These endpoints model the map the way a navigator uses it: *I am here. What's downstream? What's converging on my destination?* Agents stop polling a flat list of signals and start querying a living topology.
+
+**Acceptance Criteria:**
+- `around/:node` returns a valid subgraph for any known node.
+- Empty or unknown nodes handled gracefully with documented response shape.
+- Response schema is stable and documented for agent consumers.
+
+---
+
+### Ticket MAPS-1304: Render the map in the UI
+
+**Goal:** Make the visual metaphor literal. The home page of `maps.e3d.ai` should look like a map.
+
+Replace the table-first home with a force-directed or Sankey flow visualization. Nodes sized by capital weight, edges colored by flow strength, hazard zones highlighted in red. Tables become drill-downs from the graph, not the entry point.
+
+When a human supervisor opens `maps.e3d.ai`, the first thing they see is not a list of rows. They see the capital terrain — the roads, the jams, the open routes, the danger zones.
+
+**Acceptance Criteria:**
+- Maps Home renders the live `FlowGraph`.
+- Clicking a node navigates to its signals and route predictions.
+- Graceful empty state for pre-data launch period.
+
+---
+
+## Phase 14: Calibration as a Public Trust Surface
+
+*Every signal vendor claims to be accurate. E3D Maps is the one that proves it.*
+
+The most valuable sentence Maps can say to any consumer agent — human or machine — is not "our signals are good." It is: "when we say 0.8, we're right 78% of the time. Here is the curve. Here is the sample size. Here is how it's trended over the last 30 days."
+
+That number — the calibration curve — is not a marketing claim. It is an empirically derived, continuously updated, auditable statement about the relationship between Maps' confidence and reality. No competitor can copy it because it requires the realized-outcome dataset that only comes from running the system honestly for months and scoring every prediction with the dual-witness architecture.
+
+The `confidence_calibration_error` has been computed since Phase 9 but never surfaced. Phase 14 makes it the headline.
+
+### Ticket MAPS-1401: Calibration aggregation job
+
+**Goal:** Compute reliability curves from the population of scored outcomes.
+
+`jobs/compute_calibration_curves.py` buckets scored signals by predicted confidence and computes the realized hit-rate per bucket, per signal type, and overall. Every snapshot is append-only and timestamped. Thin-data buckets are flagged with their sample sizes — calibration with ten examples is not calibration, and the system does not pretend otherwise.
+
+**Acceptance Criteria:**
+- Curves computed per signal type and overall.
+- Every bucket includes sample size.
+- Snapshots timestamped and append-only.
+
+---
+
+### Ticket MAPS-1402: Public calibration and utility API
+
+**Goal:** Expose trust metrics through the main E3D endpoint.
+
+New endpoints:
+
+```text
+GET /api/maps/calibration     — current reliability curves and historical trend
+```
+
+And on existing signal responses:
+
+```text
+GET /api/maps/signals         — each signal now includes final_signal_utility_score
+                                and its calibration-bucket hit-rate
+```
+
+Consumer agents can now filter not just by confidence but by *proven track record* at that confidence level. A 0.75 signal from a type that calibrates at 0.74 realized accuracy is a very different input than a 0.75 signal from a type that calibrates at 0.41.
+
+**Acceptance Criteria:**
+- Calibration endpoint returns curves with sample sizes.
+- Signal responses carry track-record field.
+
+---
+
+### Ticket MAPS-1403: Calibration dashboard
+
+**Goal:** Put the proof front and center for human supervisors and prospective consumers.
+
+`/calibration` page at `maps.e3d.ai`:
+
+- **Reliability diagram:** predicted confidence on the x-axis, realized accuracy on the y-axis, per signal type. A perfectly calibrated system is a diagonal line. This is the most honest visualization in quantitative finance, and most signal products refuse to show it.
+- **Hit-rate over time:** is Maps getting sharper or drifting?
+- **Utility score distribution:** the full histogram of `final_signal_utility_score` across all scored signals.
+- **Scorer agreement trend:** is the heuristic witness and the quantitative witness converging over time? Agreement trending upward means both models are seeing the same reality. Divergence trending upward is a canary — something is shifting in the on-chain regime that the heuristic is not capturing.
+
+**Acceptance Criteria:**
+- Reliability diagram renders from `/api/maps/calibration`.
+- All panels include sample sizes.
+- Scorer agreement trend visible as a system health panel.
+
+---
+
+## 21. The Expanding Vision — v2 and Beyond
+
+The architecture built through Phase 14 creates capabilities that, with careful extension, transform E3D Maps from an intelligence layer into something with broader structural significance. These are not immediate implementation targets — they require the calibration and trust foundation of v1.2 to be credible — but they are the natural destination of the design.
+
+### The Directions API
+
+Today Maps broadcasts. Agents poll `/api/maps/signals` and filter for what's relevant. The more powerful inversion is request-response: `POST /api/maps/route` with `{from, to, size, risk_tolerance, time_horizon}` returns a ranked set of concrete routes — venue sequence, expected slippage corridor, hazard exposure per leg, estimated realization window. Every car gets a personalized route, not just access to the traffic report. Every query becomes a signal itself, feeding the demand-side intelligence layer described below.
+
+### The Query Stream Is the Product
+
+The access logs of a widely-adopted Maps API are more valuable than the signals themselves. An agent asking "where is capital going in the next 4 hours?" with an implied position size is declaring intent before the transaction exists. Aggregated, k-anonymized, and surfaced as a `SignalDemandState` — query frequency by destination, urgency indicated by shrinking requested time horizons — this pre-transaction intent layer has no on-chain equivalent. It is Waze's edge: not the map, but the drivers feeding it. This data must be logged from the first day of real API traffic or it cannot be reconstructed.
+
+### Reflexivity as a First-Class Signal
+
+When many agents act on the same signal, the signal becomes self-fulfilling — and then self-defeating as the route crowds. The dual-witness architecture and `consumer_exposure` field are the foundation for detecting this. The end state is a new signal type: `map_induced_congestion` — a warning that a route is elevated-risk specifically because too many Maps consumers are already on it. The map routes traffic off the road it created a jam on. This is what separates a navigation product that compounds value from a signal product that decays under its own success.
+
+### Hazard Signals as Insurance Primitives
+
+`route_hazard` signals with calibrated probabilities and time horizons are, structurally, actuarial tables for DeFi risk. The `PredictionOutcome` scoring loop is the loss-experience data an underwriter needs. A `bridge_risk` signal at 0.71 confidence over a 24-hour window, backed by 90 days of calibration history, is a parameter a lending protocol can use to auto-tighten LTV ratios. Protocol foundations and bridge operators represent a customer base with long horizons and no alpha-decay dynamics — a revenue line that grows more valuable as more entities act on it, rather than less.
+
+### The Road Authority Market
+
+Every signal in the v1 system is aimed downstream at trading agents. But the same TrafficState, congestion, and hazard machinery answers profoundly useful questions for the people who own the roads: L2 teams monitoring whether their chain is gaining or losing traffic, DAO treasuries tracking the health of their token's liquidity routes, market-structure researchers building systemic-risk early-warning models. A `RouteHealthReport` product keyed by protocol rather than by trade opportunity — same agents, same signals, different question queue — is a recurring SaaS product with essentially no marginal build cost.
+
+### The Coordination Layer
+
+The most radical vision: Maps is not just a map that agents read. It is a coordination substrate that agents register with. Consumer agents post `RouteIntent` — a declared plan to move capital along a route at a given time — and Maps performs slot allocation and deconfliction, preventing E3D's own fleet from bidding against itself and, eventually, enabling third-party agents to negotiate around each other's flow. The intent stream becomes the richest training corpus imaginable: planned route, declared confidence, realized action, actual outcome. The navigator becomes the air-traffic control tower. This is the natural endpoint of the autonomous finance thesis — not a thousand cars independently guessing, but a thousand cars flying in formation.
+
+---
+
+## 22. Suggested Build Order For v1.2
+
+After v1 ships, continue in this order:
+
+```text
+Phase 12 (scoring rigor)   — do first; the training flywheel depends on label quality
+Phase 14 (calibration)     — do second; it consumes Phase 12 outputs and is the trust story
+Phase 13 (flow graph)      — parallelizable; product and demo leverage, lower data risk
+```
+
+Phase 12 protects the moat. Phase 14 demonstrates it. Phase 13 makes it tangible.
+
+---
+
+## 23. Strategic Framing
 
 E3D Stories are the sensors.
 
@@ -2008,19 +2339,36 @@ E3D Maps is the navigation layer.
 E3D Trading is the action layer.
 
 ```text
-Stories -> Maps -> Trading -> Actions -> Outcomes -> Maps Calibration -> Better Maps
+Stories
+  → Maps agents
+  → NavigationSignals
+  → Public Maps API
+  → Trading agents and consumer agents
+  → Actions / Outcomes / Verdicts
+  → Maps calibration jobs
+  → Dual-witness outcome scoring
+  → Training export (quality-gated)
+  → Improved Maps adapter
+  → Sharper NavigationSignals
+  → (repeat)
 ```
 
-The compounding data asset is:
+The compounding data asset at the center of this loop is:
 
 ```text
 agent question
-+ E3D evidence
-+ Maps prediction
-+ confidence
-+ realized outcome
-+ downstream trading utility
-+ verdict
+  + E3D evidence (stories, theses, wallet data, market data)
+  + Maps prediction
+  + stated confidence
+  + realized outcome (dual-witness scored)
+  + consumer exposure (reflexivity accounting)
+  + downstream trading utility
+  + verdict
+  + calibration curve position
 ```
 
-That is the dataset that can make E3D Maps increasingly useful to autonomous financial agents.
+This is not a database. It is a flywheel. Each revolution produces a slightly smarter navigator. Each smarter navigator produces slightly better predictions. Each better prediction, honestly scored, produces slightly cleaner training data. The system is designed to be wrong early and right later — to fail with precision, learn from the failure, and accumulate an advantage that compounds with every cycle.
+
+No competitor can purchase this dataset. It cannot be scraped or synthesized. It can only be built by running the system honestly, scoring it ruthlessly, and refusing to let a bad label corrupt the loop.
+
+That is the lasting value of E3D Maps: not any individual signal, but the discipline of the machine that produces them.

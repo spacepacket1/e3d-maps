@@ -13,13 +13,29 @@ from api.normalizers import (
 from clients.clickhouse_client import ClickHouseClient
 from clients.e3d_api_client import E3DAPIClient
 from jobs.compute_signal_utility_scores import ClickHouseReadClient
+from jobs.scoring.quantitative_scorer import score as quantitative_score
 from schemas.navigation_signal import NavigationSignal
 from schemas.prediction_outcome import PredictionOutcome
 from schemas.route_prediction import RoutePrediction
-from schemas.shared_enums import FlowDirection, FlowMagnitude, OutcomeStatus
+from schemas.shared_enums import FlowDirection, FlowMagnitude, OutcomeStatus, ScoringMethod
 from settings import MapsRunnerSettings
 
 SUPPORTED_SIGNAL_TYPES = {"capital_migration", "destination_prediction"}
+
+# Heuristic rubric weights — configurable so they can be tuned from backtests
+# (MAPS-1203) without changing code.  Loaded from env at import time; override
+# in .env or the test environment as needed.
+import os as _os
+
+RUBRIC_WEIGHT_STORIES: float = float(_os.environ.get("MAPS_RUBRIC_WEIGHT_STORIES", "0.4"))
+RUBRIC_WEIGHT_EXCHANGE: float = float(_os.environ.get("MAPS_RUBRIC_WEIGHT_EXCHANGE", "0.3"))
+RUBRIC_WEIGHT_STABLECOIN: float = float(_os.environ.get("MAPS_RUBRIC_WEIGHT_STABLECOIN", "0.2"))
+RUBRIC_WEIGHT_NO_CONTRADICTION: float = float(_os.environ.get("MAPS_RUBRIC_WEIGHT_NO_CONTRADICTION", "0.1"))
+RUBRIC_PENALTY_PER_CONTRADICTION: float = float(_os.environ.get("MAPS_RUBRIC_PENALTY_PER_CONTRADICTION", "0.3"))
+
+# When |heuristic_accuracy - quantitative_accuracy| exceeds this threshold the
+# outcome is flagged DISPUTED and excluded from training export by default.
+SCORER_DISPUTE_THRESHOLD: float = float(_os.environ.get("MAPS_SCORER_DISPUTE_THRESHOLD", "0.35"))
 
 
 @dataclass(frozen=True)
@@ -49,18 +65,49 @@ def score_prediction(
     exchange_flows: Iterable[dict[str, Any]],
     stablecoin_activity: Iterable[dict[str, Any]],
     created_at: datetime | None = None,
+    consumer_exposure: int = 0,
 ) -> OutcomeDecision:
     scored_at = _utcnow() if created_at is None else _to_utc(created_at)
     selected_route = _select_route_prediction(signal=signal, route_predictions=route_predictions)
     predicted_direction = _predicted_direction(signal=signal, route_prediction=selected_route)
+
+    # Materialise iterables once so they can be passed to both scorers.
+    stories_list = list(stories)
+    exchange_flows_list = list(exchange_flows)
+    stablecoin_activity_list = list(stablecoin_activity)
+
     evidence = _collect_evidence(
         signal=signal,
         predicted_direction=predicted_direction,
-        stories=stories,
-        exchange_flows=exchange_flows,
-        stablecoin_activity=stablecoin_activity,
+        stories=stories_list,
+        exchange_flows=exchange_flows_list,
+        stablecoin_activity=stablecoin_activity_list,
     )
-    prediction_accuracy = _score_accuracy(evidence)
+
+    # --- Heuristic scorer (story-based, v1 rubric) ---
+    heuristic_accuracy = _score_accuracy(evidence)
+
+    # --- Quantitative scorer (flow-series only, independent of stories) ---
+    quant_result = quantitative_score(
+        predicted_direction=str(predicted_direction),
+        exchange_flows=exchange_flows_list,
+        stablecoin_series=stablecoin_activity_list,
+    )
+    quant_accuracy = quant_result.realized_score
+
+    # --- Blend and dispute detection ---
+    scorer_agreement = abs(heuristic_accuracy - quant_accuracy)
+    disputed = scorer_agreement > SCORER_DISPUTE_THRESHOLD
+
+    if disputed:
+        # Blended mean, but flag the outcome so the training export can exclude it.
+        prediction_accuracy = (heuristic_accuracy + quant_accuracy) / 2.0
+        scoring_method = ScoringMethod.BLENDED
+    else:
+        # Both scorers agree: use the blended mean as the primary accuracy.
+        prediction_accuracy = (heuristic_accuracy + quant_accuracy) / 2.0
+        scoring_method = ScoringMethod.BLENDED
+
     realized_direction = _realized_direction(
         predicted_direction=predicted_direction,
         evidence=evidence,
@@ -73,6 +120,7 @@ def score_prediction(
     status = _derive_outcome_status(
         prediction_accuracy=prediction_accuracy,
         evidence=evidence,
+        disputed=disputed,
     )
 
     outcome = PredictionOutcome(
@@ -83,14 +131,23 @@ def score_prediction(
         prediction_accuracy=prediction_accuracy,
         realized_direction=realized_direction,
         realized_magnitude=realized_magnitude,
-        map_prediction_correct=prediction_accuracy >= 0.6,
+        map_prediction_correct=(not disputed) and prediction_accuracy >= 0.6,
         notes=_build_notes(
             signal=signal,
             evidence=evidence,
             prediction_accuracy=prediction_accuracy,
+            heuristic_accuracy=heuristic_accuracy,
+            quant_accuracy=quant_accuracy,
+            disputed=disputed,
         ),
         created_by_agent="score_pending_predictions",
         created_at=scored_at,
+        # Phase 12 dual-scorer fields.
+        heuristic_accuracy=heuristic_accuracy,
+        quantitative_accuracy=quant_accuracy,
+        scorer_agreement=scorer_agreement,
+        scoring_method=scoring_method,
+        consumer_exposure=consumer_exposure,
     )
     return OutcomeDecision(outcome=outcome, status=status)
 
@@ -345,11 +402,11 @@ def _score_accuracy(evidence: EvidenceBucket) -> float:
     contradiction_count = 0
 
     if evidence.supporting_stories:
-        score += 0.4
+        score += RUBRIC_WEIGHT_STORIES
     if evidence.supporting_exchange_flows:
-        score += 0.3
+        score += RUBRIC_WEIGHT_EXCHANGE
     if evidence.supporting_stablecoin_activity:
-        score += 0.2
+        score += RUBRIC_WEIGHT_STABLECOIN
 
     if evidence.contradicting_stories:
         contradiction_count += 1
@@ -358,9 +415,9 @@ def _score_accuracy(evidence: EvidenceBucket) -> float:
     if evidence.contradicting_stablecoin_activity:
         contradiction_count += 1
 
-    score -= contradiction_count * 0.3
+    score -= contradiction_count * RUBRIC_PENALTY_PER_CONTRADICTION
     if contradiction_count == 0:
-        score += 0.1
+        score += RUBRIC_WEIGHT_NO_CONTRADICTION
 
     return _clamp01(score)
 
@@ -425,7 +482,13 @@ def _derive_outcome_status(
     *,
     prediction_accuracy: float,
     evidence: EvidenceBucket,
+    disputed: bool = False,
 ) -> OutcomeStatus:
+    # Disputed outcomes (large heuristic/quantitative scorer disagreement) get
+    # their own status so they can be excluded from training export.
+    if disputed:
+        return OutcomeStatus.DISPUTED
+
     contradiction_count = sum(
         1
         for bucket in (
@@ -567,6 +630,9 @@ def _build_notes(
     signal: NavigationSignal,
     evidence: EvidenceBucket,
     prediction_accuracy: float,
+    heuristic_accuracy: float | None = None,
+    quant_accuracy: float | None = None,
+    disputed: bool = False,
 ) -> str:
     window_start = _to_utc(signal.created_at).isoformat().replace("+00:00", "Z")
     window_end = _evaluation_window_end(signal).isoformat().replace("+00:00", "Z")
@@ -579,8 +645,18 @@ def _build_notes(
         )
         if bucket
     )
-    no_contradiction_bonus = 0.1 if contradiction_count == 0 else 0.0
-    contradiction_penalty = contradiction_count * 0.3
+    no_contradiction_bonus = RUBRIC_WEIGHT_NO_CONTRADICTION if contradiction_count == 0 else 0.0
+    contradiction_penalty = contradiction_count * RUBRIC_PENALTY_PER_CONTRADICTION
+
+    dual_scorer_note = ""
+    if heuristic_accuracy is not None and quant_accuracy is not None:
+        agreement = abs(heuristic_accuracy - quant_accuracy)
+        dual_scorer_note = (
+            f" Dual-scorer: heuristic={heuristic_accuracy:.2f}, "
+            f"quantitative={quant_accuracy:.2f}, "
+            f"agreement_delta={agreement:.2f}"
+            f"{', DISPUTED' if disputed else ''}."
+        )
 
     return (
         f"Evaluation window: {window_start} to {window_end}. "
@@ -593,12 +669,13 @@ def _build_notes(
         f"Skipped untimestamped records: stories={evidence.skipped_stories}, "
         f"exchange_flows={evidence.skipped_exchange_flows}, "
         f"stablecoin_activity={evidence.skipped_stablecoin_activity}. "
-        f"Rubric totals: stories={0.4 if evidence.supporting_stories else 0.0:.1f}, "
-        f"exchange={0.3 if evidence.supporting_exchange_flows else 0.0:.1f}, "
-        f"stablecoins={0.2 if evidence.supporting_stablecoin_activity else 0.0:.1f}, "
+        f"Rubric totals: stories={RUBRIC_WEIGHT_STORIES if evidence.supporting_stories else 0.0:.1f}, "
+        f"exchange={RUBRIC_WEIGHT_EXCHANGE if evidence.supporting_exchange_flows else 0.0:.1f}, "
+        f"stablecoins={RUBRIC_WEIGHT_STABLECOIN if evidence.supporting_stablecoin_activity else 0.0:.1f}, "
         f"contradiction_penalty={contradiction_penalty:.1f}, "
         f"no_contradiction_bonus={no_contradiction_bonus:.1f}, "
         f"final_accuracy={prediction_accuracy:.2f}."
+        f"{dual_scorer_note}"
     )
 
 

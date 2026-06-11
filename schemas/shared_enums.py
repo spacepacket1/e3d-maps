@@ -41,6 +41,13 @@ class OutcomeStatus(StrEnum):
     CORRECT = "correct"
     INCORRECT = "incorrect"
     MIXED = "mixed"
+    DISPUTED = "disputed"
+
+
+class ScoringMethod(StrEnum):
+    HEURISTIC = "heuristic"
+    QUANTITATIVE = "quantitative"
+    BLENDED = "blended"
 
 
 class FlowDirection(StrEnum):
