@@ -315,6 +315,14 @@ class ClickHouseClient:
             "adapter": "",
             "schema_version": "",
             "created_at": ClickHouseClient._format_datetime(record.created_at),
+            # Phase 12 dual-witness fields
+            "heuristic_accuracy": record.heuristic_accuracy,
+            "quantitative_accuracy": record.quantitative_accuracy,
+            "scorer_agreement": record.scorer_agreement,
+            "scoring_method": record.scoring_method.value,
+            "consumer_exposure": record.consumer_exposure,
+            "exogenous_accuracy": record.exogenous_accuracy,
+            "induced_accuracy": record.induced_accuracy,
         }
 
     @staticmethod

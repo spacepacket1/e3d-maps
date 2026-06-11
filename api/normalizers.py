@@ -79,6 +79,14 @@ def normalize_prediction_outcome_row(row: dict[str, Any]) -> PredictionOutcome:
         "notes": row["notes"],
         "created_by_agent": row["created_by_agent"],
         "created_at": _parse_datetime(row["created_at"]),
+        # Phase 12 dual-witness fields (absent in older rows → default to None/0)
+        "heuristic_accuracy": row.get("heuristic_accuracy"),
+        "quantitative_accuracy": row.get("quantitative_accuracy"),
+        "scorer_agreement": row.get("scorer_agreement"),
+        "scoring_method": row.get("scoring_method") or "heuristic",
+        "consumer_exposure": row.get("consumer_exposure") or 0,
+        "exogenous_accuracy": row.get("exogenous_accuracy"),
+        "induced_accuracy": row.get("induced_accuracy"),
     }
     return PredictionOutcome.model_validate(payload)
 
