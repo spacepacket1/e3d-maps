@@ -1,0 +1,571 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "E3D Maps API",
+    "version": "1.0.0",
+    "description": "Read-only navigation intelligence API for autonomous agents operating across on-chain capital markets. All endpoints return JSON. No authentication required.",
+    "contact": {
+      "url": "https://maps.e3d.ai"
+    }
+  },
+  "servers": [
+    { "url": "https://maps.e3d.ai", "description": "Production" }
+  ],
+  "tags": [
+    { "name": "State", "description": "Current traffic state — full situational picture" },
+    { "name": "Signals", "description": "NavigationSignals — individual agent-actionable findings" },
+    { "name": "Routes", "description": "RoutePredictions — structured capital route forecasts" },
+    { "name": "Hazards", "description": "Route hazard and closure signals" },
+    { "name": "Congestion", "description": "Congestion formation signals" },
+    { "name": "Predictions", "description": "Forward-looking capital destination predictions" },
+    { "name": "Story Types", "description": "Input taxonomy for Maps agents" }
+  ],
+  "paths": {
+    "/api/maps/state": {
+      "get": {
+        "tags": ["State"],
+        "summary": "Get current TrafficState",
+        "description": "Returns the latest TrafficState — the full map of the market: dominant flows, congestion zones, active hazards, and top capital destinations by confidence. Primary situational-awareness endpoint for agents before making a decision.",
+        "operationId": "getTrafficState",
+        "responses": {
+          "200": {
+            "description": "Current traffic state",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TrafficStateResponse" },
+                "example": {
+                  "status": "ok",
+                  "state": {
+                    "id": "ts_01j...",
+                    "scope": "global",
+                    "market_state": "risk_on",
+                    "dominant_flows": [
+                      { "origin": "stablecoins", "destination": "ETH", "strength": "strong" }
+                    ],
+                    "congestion_zones": ["DEX aggregators", "L2 bridges"],
+                    "hazards": ["exchange_outflow_spike"],
+                    "top_destinations": [
+                      { "destination": "ETH", "confidence": 0.84 }
+                    ],
+                    "created_at": "2026-06-11T16:00:00Z"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/maps/signals": {
+      "get": {
+        "tags": ["Signals"],
+        "summary": "List NavigationSignals",
+        "description": "Returns NavigationSignals with optional filters. Each signal answers a navigation question with a confidence score, risk level, and recommended action.",
+        "operationId": "listSignals",
+        "parameters": [
+          {
+            "name": "signal_type",
+            "in": "query",
+            "description": "Filter by signal type",
+            "schema": { "$ref": "#/components/schemas/SignalType" }
+          },
+          {
+            "name": "asset",
+            "in": "query",
+            "description": "Filter to signals mentioning this asset in asset_scope (e.g. ETH, BTC, USDC)",
+            "schema": { "type": "string", "example": "ETH" }
+          },
+          {
+            "name": "chain",
+            "in": "query",
+            "description": "Filter to signals mentioning this chain in chain_scope (e.g. ethereum, base, arbitrum)",
+            "schema": { "type": "string", "example": "ethereum" }
+          },
+          {
+            "name": "min_confidence",
+            "in": "query",
+            "description": "Minimum confidence threshold (0.0–1.0). Use 0.8 for high-confidence signals only.",
+            "schema": { "type": "number", "format": "float", "minimum": 0, "maximum": 1, "example": 0.8 }
+          },
+          {
+            "name": "time_horizon_hours",
+            "in": "query",
+            "description": "Exact match on signal time horizon in hours (e.g. 4, 12, 24, 72)",
+            "schema": { "type": "integer", "example": 24 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Max results per page (default 50, max 500)",
+            "schema": { "type": "integer", "default": 50, "maximum": 500, "example": 50 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Pagination offset",
+            "schema": { "type": "integer", "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of NavigationSignals",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SignalsResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/maps/signals/{id}": {
+      "get": {
+        "tags": ["Signals"],
+        "summary": "Get a single NavigationSignal",
+        "description": "Returns a single NavigationSignal by ID, including full evidence and recommended route details.",
+        "operationId": "getSignal",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "NavigationSignal ID (e.g. ns_01j...)",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Single NavigationSignal",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SignalDetailResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Signal not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/maps/routes": {
+      "get": {
+        "tags": ["Routes"],
+        "summary": "List RoutePredictions",
+        "description": "Returns RoutePrediction records — structured predictions about specific capital routes including expected flow direction, magnitude, and time horizon.",
+        "operationId": "listRoutes",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50, "maximum": 500 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": { "type": "integer", "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of RoutePredictions",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RoutesResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/maps/hazards": {
+      "get": {
+        "tags": ["Hazards"],
+        "summary": "List route hazards",
+        "description": "Returns route_hazard and route_closure signals. Check before executing a route to avoid exchange halts, bridge congestion, or liquidity gaps.",
+        "operationId": "listHazards",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50, "maximum": 500 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": { "type": "integer", "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of hazard signals",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/HazardsResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/maps/congestion": {
+      "get": {
+        "tags": ["Congestion"],
+        "summary": "List congestion zones",
+        "description": "Returns congestion_formation signals — zones where capital is accumulating faster than it can clear. Useful for timing entries and exits.",
+        "operationId": "listCongestion",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50, "maximum": 500 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": { "type": "integer", "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of congestion signals",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CongestionResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/maps/predictions": {
+      "get": {
+        "tags": ["Predictions"],
+        "summary": "List forward-looking predictions",
+        "description": "Returns capital_migration and destination_prediction signals — the forward-looking layer. Agents use these to position before a move, not after.",
+        "operationId": "listPredictions",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50, "maximum": 500 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": { "type": "integer", "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of prediction signals",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PredictionsResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/maps/destinations": {
+      "get": {
+        "tags": ["Predictions"],
+        "summary": "List top capital destinations",
+        "description": "Returns destination_prediction signals ranked by confidence descending. Use this to find the highest-probability capital destinations right now.",
+        "operationId": "listDestinations",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50, "maximum": 500 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": { "type": "integer", "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ranked list of capital destinations",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DestinationsResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/story-types": {
+      "get": {
+        "tags": ["Story Types"],
+        "summary": "List all story type definitions",
+        "description": "Returns all StoryTypeDefinitions — the taxonomy of on-chain story types that Maps agents interpret as navigation evidence.",
+        "operationId": "listStoryTypes",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50, "maximum": 500 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": { "type": "integer", "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of StoryTypeDefinitions",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StoryTypesResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/story-types/{type}": {
+      "get": {
+        "tags": ["Story Types"],
+        "summary": "Get a single story type definition",
+        "description": "Returns a single StoryTypeDefinition by its story_type slug.",
+        "operationId": "getStoryType",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "description": "Story type slug (e.g. capital_migration)",
+            "schema": { "type": "string", "example": "capital_migration" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Single StoryTypeDefinition",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StoryTypeDetailResponse" }
+              }
+            }
+          },
+          "404": {
+            "description": "Story type not found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SignalType": {
+        "type": "string",
+        "enum": [
+          "capital_migration",
+          "destination_prediction",
+          "route_hazard",
+          "route_closure",
+          "congestion_formation",
+          "liquidity_forecast",
+          "capital_conviction"
+        ]
+      },
+      "RiskLevel": {
+        "type": "string",
+        "enum": ["low", "medium", "high", "critical"]
+      },
+      "SignalStrength": {
+        "type": "string",
+        "enum": ["weak", "moderate", "strong", "very_strong"]
+      },
+      "RecommendedAction": {
+        "type": "string",
+        "enum": [
+          "increase_exposure",
+          "reduce_exposure",
+          "hold",
+          "hedge",
+          "avoid_route",
+          "monitor",
+          "take_profit",
+          "rotate"
+        ]
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "count": { "type": "integer" },
+          "has_more": { "type": "boolean" }
+        }
+      },
+      "NavigationSignal": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "signal_type": { "$ref": "#/components/schemas/SignalType" },
+          "question": { "type": "string" },
+          "answer": { "type": "string" },
+          "origin": { "type": "string", "nullable": true },
+          "destination": { "type": "string", "nullable": true },
+          "confidence": { "type": "number", "format": "float", "minimum": 0, "maximum": 1 },
+          "risk_level": { "$ref": "#/components/schemas/RiskLevel" },
+          "signal_strength": { "$ref": "#/components/schemas/SignalStrength" },
+          "recommended_action": { "$ref": "#/components/schemas/RecommendedAction" },
+          "asset_scope": { "type": "array", "items": { "type": "string" } },
+          "chain_scope": { "type": "array", "items": { "type": "string" } },
+          "time_horizon_hours": { "type": "integer", "nullable": true },
+          "outcome_status": { "type": "string", "enum": ["pending", "correct", "incorrect", "expired"] },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "RoutePrediction": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "route_type": { "type": "string" },
+          "origin": { "type": "string" },
+          "destination": { "type": "string" },
+          "expected_flow_direction": { "type": "string", "enum": ["inflow", "outflow", "neutral"] },
+          "expected_flow_magnitude": { "type": "string", "enum": ["small", "medium", "large", "very_large"] },
+          "time_horizon_hours": { "type": "integer" },
+          "confidence": { "type": "number", "format": "float", "minimum": 0, "maximum": 1 },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "TrafficStateResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" },
+          "state": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "scope": { "type": "string" },
+              "market_state": { "type": "string" },
+              "dominant_flows": { "type": "array", "items": { "type": "object" } },
+              "congestion_zones": { "type": "array", "items": { "type": "string" } },
+              "hazards": { "type": "array", "items": { "type": "string" } },
+              "top_destinations": { "type": "array", "items": { "type": "object" } },
+              "created_at": { "type": "string", "format": "date-time" }
+            }
+          }
+        }
+      },
+      "SignalsResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" },
+          "signals": { "type": "array", "items": { "$ref": "#/components/schemas/NavigationSignal" } },
+          "pagination": { "$ref": "#/components/schemas/Pagination" }
+        }
+      },
+      "SignalDetailResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" },
+          "signal": { "$ref": "#/components/schemas/NavigationSignal" }
+        }
+      },
+      "RoutesResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" },
+          "routes": { "type": "array", "items": { "$ref": "#/components/schemas/RoutePrediction" } },
+          "pagination": { "$ref": "#/components/schemas/Pagination" }
+        }
+      },
+      "HazardsResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" },
+          "hazards": { "type": "array", "items": { "$ref": "#/components/schemas/NavigationSignal" } },
+          "pagination": { "$ref": "#/components/schemas/Pagination" }
+        }
+      },
+      "CongestionResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" },
+          "congestion": { "type": "array", "items": { "$ref": "#/components/schemas/NavigationSignal" } },
+          "pagination": { "$ref": "#/components/schemas/Pagination" }
+        }
+      },
+      "PredictionsResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" },
+          "predictions": { "type": "array", "items": { "$ref": "#/components/schemas/NavigationSignal" } },
+          "pagination": { "$ref": "#/components/schemas/Pagination" }
+        }
+      },
+      "DestinationsResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" },
+          "destinations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "destination": { "type": "string" },
+                "confidence": { "type": "number", "format": "float" }
+              }
+            }
+          },
+          "pagination": { "$ref": "#/components/schemas/Pagination" }
+        }
+      },
+      "StoryTypeDefinition": {
+        "type": "object",
+        "properties": {
+          "story_type": { "type": "string" },
+          "display_name": { "type": "string" },
+          "category": { "type": "string" },
+          "human_meaning": { "type": "string" },
+          "agent_meaning": { "type": "string" },
+          "inputs": { "type": "array", "items": { "type": "string" } },
+          "outputs": { "type": "array", "items": { "type": "string" } },
+          "example_questions": { "type": "array", "items": { "type": "string" } },
+          "related_navigation_signal_types": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "StoryTypesResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" },
+          "story_types": { "type": "array", "items": { "$ref": "#/components/schemas/StoryTypeDefinition" } },
+          "pagination": { "$ref": "#/components/schemas/Pagination" }
+        }
+      },
+      "StoryTypeDetailResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "ok" },
+          "story_type": { "$ref": "#/components/schemas/StoryTypeDefinition" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "status": { "type": "string", "example": "error" },
+          "error": { "type": "string" }
+        }
+      }
+    }
+  }
+}

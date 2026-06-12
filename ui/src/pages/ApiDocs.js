@@ -143,7 +143,13 @@ export function ApiDocsPage() {
       el("div", null,
         el("p", { className: "eyebrow" }, "API Reference"),
         el("h2", null, "Agent API")
-      )
+      ),
+      el("a", {
+        href: "/openapi.json",
+        target: "_blank",
+        rel: "noopener noreferrer",
+        className: "action-link",
+      }, "openapi.json")
     ),
     el("div", { className: "panel api-intro" },
       el("p", null,
