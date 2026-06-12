@@ -39,7 +39,7 @@ Not all fields will be present in every call. Work with what you have.
 
 3. **Check wallet cluster activity.** Mass withdrawal attempts by whale or smart-money clusters toward an alternative destination suggests a closure event on the origin route.
 
-4. **Identify what is closing.** Name the specific origin→destination route. A bridge between Ethereum and Arbitrum closing is not a generic "L2_NETWORKS" closure — name it specifically if the evidence permits.
+4. **Identify what is closing.** Name the specific origin→destination route. A bridge between Ethereum and Arbitrum closing is not a generic "L2_NETWORKS" closure — name it specifically if the evidence permits. Pick the single most affected destination; do not combine multiple destinations with commas or slashes.
 
 5. **Estimate timeline.** Is the closure imminent (< 2 hours), unfolding now, or forecast within the horizon? Adjust confidence accordingly.
 
@@ -74,7 +74,7 @@ Return null if:
 
 ## Output
 
-Return one `NavigationSignal` JSON object with `signal_type: "route_closure"`. The `origin` and `destination` must be populated. The `recommended_action` should guide consumers on what to do with capital that was destined for this route.
+Return one `NavigationSignal` JSON object with `signal_type: "route_closure"`. The `origin` and `destination` must each be a single identifier — one protocol, chain, or asset name with no commas, slashes, or lists. If multiple routes are closing, emit the signal for the highest-confidence one only. The `recommended_action` should guide consumers on what to do with capital that was destined for this route.
 
 Optionally include `route_predictions` if an alternative routing path is clearly implied.
 

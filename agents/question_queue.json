@@ -6,14 +6,20 @@
     "enabled": true
   },
   {
-    "agent": "congestion_agent",
-    "question": "Where is congestion forming right now?",
-    "time_horizon_hours": 6,
+    "agent": "capital_migration_agent",
+    "question": "Is capital rotating from ETH DeFi toward Solana or L2 ecosystems over the next 24 hours?",
+    "time_horizon_hours": 24,
     "enabled": true
   },
   {
-    "agent": "route_hazard_agent",
-    "question": "Which capital routes are becoming unsafe?",
+    "agent": "capital_migration_agent",
+    "question": "Is capital moving into or out of perpetuals and derivatives trading venues over the next 24 hours?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
+    "agent": "capital_migration_agent",
+    "question": "Is capital migrating between stablecoins and risk assets, or between BTC-correlated and altcoin positions, over the next 24 hours?",
     "time_horizon_hours": 24,
     "enabled": true
   },
@@ -24,8 +30,68 @@
     "enabled": true
   },
   {
+    "agent": "destination_prediction_agent",
+    "question": "Which Solana ecosystem protocols are gaining destination probability over the next 24 hours?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
+    "agent": "destination_prediction_agent",
+    "question": "Which L2-native protocols or networks are gaining destination probability over the next 24 hours?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
+    "agent": "destination_prediction_agent",
+    "question": "Are liquid staking or restaking protocols gaining probability as capital destinations over the next 24 hours?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
+    "agent": "congestion_agent",
+    "question": "Where is congestion forming right now?",
+    "time_horizon_hours": 6,
+    "enabled": true
+  },
+  {
+    "agent": "congestion_agent",
+    "question": "Are any L2 bridges or cross-chain routes forming congestion right now?",
+    "time_horizon_hours": 6,
+    "enabled": true
+  },
+  {
+    "agent": "congestion_agent",
+    "question": "Are any perpetuals venues or high-leverage routes showing signs of congestion right now?",
+    "time_horizon_hours": 6,
+    "enabled": true
+  },
+  {
+    "agent": "route_hazard_agent",
+    "question": "Which capital routes are becoming unsafe?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
+    "agent": "route_hazard_agent",
+    "question": "Are any cross-chain bridge routes showing elevated hazard levels over the next 24 hours?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
+    "agent": "route_hazard_agent",
+    "question": "Which DeFi lending or borrowing routes have increasing liquidation or depeg risk over the next 24 hours?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
     "agent": "route_closure_agent",
     "question": "Which capital routes are closing or becoming unavailable over the next 24 hours?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
+    "agent": "route_closure_agent",
+    "question": "Are any cross-chain bridges or exchange withdrawal routes closing over the next 24 hours?",
     "time_horizon_hours": 24,
     "enabled": true
   },
@@ -36,8 +102,32 @@
     "enabled": true
   },
   {
+    "agent": "route_emergence_agent",
+    "question": "Are any new Solana or L2 ecosystem capital routes emerging over the next 24 hours?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
+    "agent": "route_emergence_agent",
+    "question": "Are any new perpetuals or derivatives trading routes opening over the next 24 hours?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
     "agent": "liquidity_forecast_agent",
     "question": "Where is liquidity thinning or building over the next 12 hours?",
+    "time_horizon_hours": 12,
+    "enabled": true
+  },
+  {
+    "agent": "liquidity_forecast_agent",
+    "question": "Is liquidity building or thinning on any L2 networks or cross-chain venues over the next 12 hours?",
+    "time_horizon_hours": 12,
+    "enabled": true
+  },
+  {
+    "agent": "liquidity_forecast_agent",
+    "question": "Are any stablecoin pools or lending markets seeing significant liquidity changes over the next 12 hours?",
     "time_horizon_hours": 12,
     "enabled": true
   },
@@ -48,14 +138,44 @@
     "enabled": true
   },
   {
+    "agent": "capital_conviction_agent",
+    "question": "Which Solana ecosystem positions show strong capital conviction from tracked wallets over the next 24 hours?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
+    "agent": "capital_conviction_agent",
+    "question": "Which perpetuals or high-leverage positions show strong capital conviction from tracked wallets over the next 24 hours?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
     "agent": "narrative_acceleration_agent",
     "question": "Which narratives are accelerating unusually fast?",
     "time_horizon_hours": 24,
     "enabled": true
   },
   {
+    "agent": "narrative_acceleration_agent",
+    "question": "Is the Solana ecosystem or any competing L1 narrative accelerating unusually fast right now?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
+    "agent": "narrative_acceleration_agent",
+    "question": "Are RWA, institutional DeFi, or liquid staking narratives accelerating right now?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
     "agent": "agent_swarm_formation_agent",
     "question": "Are agent swarms forming around a common destination?",
+    "time_horizon_hours": 24,
+    "enabled": true
+  },
+  {
+    "agent": "agent_swarm_formation_agent",
+    "question": "Are agent swarms forming around any non-ETH-DeFi destination such as Solana, L2s, or perpetuals?",
     "time_horizon_hours": 24,
     "enabled": true
   }

@@ -97,6 +97,7 @@ class MapsAPIService:
             FROM NavigationSignals
             {where_clause}
             ORDER BY created_at DESC, id DESC
+            LIMIT 1 BY signal_type, destination
             {limit_clause}
             FORMAT JSONEachRow
             """,
@@ -128,6 +129,7 @@ class MapsAPIService:
             FROM RoutePredictions
             {where_clause}
             ORDER BY created_at DESC, id DESC
+            LIMIT 1 BY route_type, destination
             {limit_clause}
             FORMAT JSONEachRow
             """,
@@ -144,6 +146,7 @@ class MapsAPIService:
             FROM NavigationSignals
             {where_clause}
             ORDER BY created_at DESC, id DESC
+            LIMIT 1 BY signal_type, destination
             {limit_clause}
             FORMAT JSONEachRow
             """,
@@ -162,6 +165,7 @@ class MapsAPIService:
             FROM NavigationSignals
             {where_clause}
             ORDER BY created_at DESC, id DESC
+            LIMIT 1 BY signal_type, destination
             {limit_clause}
             FORMAT JSONEachRow
             """,
@@ -180,6 +184,7 @@ class MapsAPIService:
             FROM NavigationSignals
             {where_clause}
             ORDER BY confidence DESC, created_at DESC, id DESC
+            LIMIT 1 BY destination
             {limit_clause}
             FORMAT JSONEachRow
             """,
@@ -198,6 +203,7 @@ class MapsAPIService:
             FROM NavigationSignals
             {where_clause}
             ORDER BY created_at DESC, id DESC
+            LIMIT 1 BY destination
             {limit_clause}
             FORMAT JSONEachRow
             """,

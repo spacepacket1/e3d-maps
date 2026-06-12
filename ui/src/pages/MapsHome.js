@@ -146,7 +146,9 @@ export function MapsHomePage({ api, navigate }) {
                           (hazardSignal) => html`
                             <li key=${hazardSignal.id}>
                               <a href=${`/signals/${hazardSignal.id}`} onClick=${(event) => jumpToSignal(event, hazardSignal.id, navigate)}>
-                                ${titleCaseLabel(hazardSignal.signal_type)}
+                                ${hazardSignal.destination
+                                  ? `${titleCaseLabel(hazardSignal.signal_type)} — ${hazardSignal.destination}`
+                                  : titleCaseLabel(hazardSignal.signal_type)}
                               </a>
                             </li>
                           `

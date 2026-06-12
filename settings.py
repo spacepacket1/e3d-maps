@@ -71,6 +71,7 @@ class MapsRunnerSettings:
     utility_interval_seconds: int = 3600
     export_interval_seconds: int = 86400
     flow_graph_interval_seconds: int = 300
+    traffic_state_interval_seconds: int = 300
     scheduler_tick_seconds: int = 60
     use_sample_context: bool = False
     use_sample_responses: bool = False
@@ -96,6 +97,7 @@ class MapsRunnerSettings:
             utility_interval_seconds=int(env.get("MAPS_UTILITY_INTERVAL_SECONDS") or 3600),
             export_interval_seconds=int(env.get("MAPS_EXPORT_INTERVAL_SECONDS") or 86400),
             flow_graph_interval_seconds=int(env.get("MAPS_FLOW_GRAPH_INTERVAL_SECONDS") or 300),
+            traffic_state_interval_seconds=int(env.get("MAPS_TRAFFIC_STATE_INTERVAL_SECONDS") or 300),
             scheduler_tick_seconds=int(env.get("MAPS_SCHEDULER_TICK_SECONDS") or 60),
             use_sample_context=_parse_bool(env.get("MAPS_RUNNER_USE_SAMPLE_CONTEXT")),
             use_sample_responses=_parse_bool(env.get("MAPS_RUNNER_USE_SAMPLE_RESPONSES")),
