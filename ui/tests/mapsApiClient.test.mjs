@@ -59,3 +59,41 @@ test("emptyPage provides a stable empty collection shape", () => {
     },
   });
 });
+
+test("getRecommendations passes objective and asset as query params", async () => {
+  let capturedUrl = "";
+  const client = createMapsApiClient({
+    fetchImpl: async (url) => {
+      capturedUrl = url;
+      return {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          generatedAt: "2026-06-12T03:00:00Z",
+          objective: "seek_opportunity",
+          recommendations: [{ rank: 1, title: "Test", action: "investigate", confidence: 80, risk: 20, score: 76, reasoning: [], supporting_signals: [], supporting_routes: [], story_type: null }],
+        }),
+      };
+    },
+  });
+
+  const result = await client.getRecommendations({ objective: "seek_opportunity", asset: "ETH", maxResults: 5 });
+  assert.match(capturedUrl, /objective=seek_opportunity/);
+  assert.match(capturedUrl, /asset=ETH/);
+  assert.match(capturedUrl, /maxResults=5/);
+  assert.equal(result.recommendations.length, 1);
+  assert.equal(result.recommendations[0].rank, 1);
+});
+
+test("getRecommendations returns empty list on failure gracefully", async () => {
+  const client = createMapsApiClient({
+    fetchImpl: async () => ({
+      status: 200,
+      ok: true,
+      json: async () => null,
+    }),
+  });
+
+  const result = await client.getRecommendations({});
+  assert.deepEqual(result, { generatedAt: null, objective: null, recommendations: [] });
+});

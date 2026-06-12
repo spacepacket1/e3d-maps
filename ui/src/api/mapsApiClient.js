@@ -105,6 +105,18 @@ export function createMapsApiClient({ baseUrl = "", fetchImpl = globalThis.fetch
       });
       return body || emptyPage("story_types");
     },
+    async getRecommendations(filters = {}) {
+      const body = await request("/api/maps/recommendations", {
+        query: {
+          objective: filters.objective,
+          asset: filters.asset,
+          address: filters.address,
+          storyType: filters.storyType,
+          maxResults: filters.maxResults,
+        },
+      });
+      return body || { generatedAt: null, objective: null, recommendations: [] };
+    },
   };
 }
 

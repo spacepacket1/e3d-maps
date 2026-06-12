@@ -1,4 +1,5 @@
 export const navigationItems = [
+  { href: "/recommendations", label: "Recommendations" },
   { href: "/", label: "Traffic State" },
   { href: "/signals", label: "Signals" },
   { href: "/routes", label: "Routes" },
@@ -15,6 +16,7 @@ export const headerLinks = [
 const routeDefinitions = [
   { id: "maps-home", path: "/" },
   { id: "maps-home", path: "/maps" },
+  { id: "recommendations", path: "/recommendations" },
   { id: "signals-list", path: "/signals" },
   { id: "signal-detail", path: "/signals/:id" },
   { id: "routes", path: "/routes" },

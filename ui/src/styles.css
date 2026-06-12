@@ -712,6 +712,127 @@ button {
 
 /* ── End whitepaper shell ─────────────────────────────── */
 
+/* ── Recommendations ──────────────────────────────────── */
+
+.filter-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-bar select,
+.filter-bar input[type="text"] {
+  font: inherit;
+  padding: 8px 12px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.filter-bar select { min-width: 180px; }
+.filter-bar input[type="text"] { min-width: 160px; }
+
+.muted-meta {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.recommendation-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.recommendation-card {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  padding: 20px 24px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 10px;
+}
+
+.rec-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.rec-rank {
+  font-family: "Menlo", "Monaco", monospace;
+  font-size: 0.85rem;
+  color: var(--muted);
+  min-width: 28px;
+}
+
+.rec-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.badge-accent { background: var(--accent-soft); color: var(--accent); }
+.badge-positive { background: rgba(10, 127, 104, 0.20); color: #065c4b; }
+.badge-warning { background: rgba(141, 94, 18, 0.14); color: var(--warning); }
+.badge-danger { background: rgba(156, 52, 52, 0.12); color: var(--danger); }
+.badge-neutral { background: rgba(111, 99, 87, 0.12); color: var(--muted); }
+
+.rec-scores {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.score-chip {
+  font-size: 0.8rem;
+  background: rgba(61, 45, 30, 0.07);
+  border-radius: 6px;
+  padding: 3px 10px;
+  color: var(--text);
+}
+
+.story-chip {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.rec-reasoning {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.rec-signals-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0;
+  font-family: "Menlo", "Monaco", monospace;
+}
+
+/* ── End recommendations ──────────────────────────────── */
+
 @media (max-width: 720px) {
   .app-shell {
     padding: 20px 14px 40px;

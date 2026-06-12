@@ -12,6 +12,7 @@
     { "url": "https://maps.e3d.ai", "description": "Production" }
   ],
   "tags": [
+    { "name": "Recommendations", "description": "Ranked recommended actions synthesized from all navigation intelligence" },
     { "name": "State", "description": "Current traffic state — full situational picture" },
     { "name": "Signals", "description": "NavigationSignals — individual agent-actionable findings" },
     { "name": "Routes", "description": "RoutePredictions — structured capital route forecasts" },
@@ -21,6 +22,81 @@
     { "name": "Story Types", "description": "Input taxonomy for Maps agents" }
   ],
   "paths": {
+    "/api/maps/recommendations": {
+      "get": {
+        "tags": ["Recommendations"],
+        "summary": "Get ranked recommendations",
+        "description": "Returns a ranked list of recommended actions synthesized from all available navigation intelligence — signals, routes, hazards, congestion, and predictions. The primary decision-support endpoint for autonomous agents. Call this to find out what to do next.",
+        "operationId": "getRecommendations",
+        "parameters": [
+          {
+            "name": "objective",
+            "in": "query",
+            "description": "Agent objective. Shapes action recommendations. One of: grow_capital, preserve_capital, reduce_risk, seek_opportunity, monitor_market.",
+            "schema": {
+              "type": "string",
+              "enum": ["grow_capital", "preserve_capital", "reduce_risk", "seek_opportunity", "monitor_market"],
+              "example": "seek_opportunity"
+            }
+          },
+          {
+            "name": "asset",
+            "in": "query",
+            "description": "Focus recommendations on a specific asset (e.g. ETH, BTC, LINK).",
+            "schema": { "type": "string", "example": "ETH" }
+          },
+          {
+            "name": "address",
+            "in": "query",
+            "description": "Focus recommendations on a wallet or contract address.",
+            "schema": { "type": "string", "example": "0x1234..." }
+          },
+          {
+            "name": "storyType",
+            "in": "query",
+            "description": "Limit recommendations to signals from a specific story category (e.g. capital_migration, whale_movement).",
+            "schema": { "type": "string", "example": "capital_migration" }
+          },
+          {
+            "name": "maxResults",
+            "in": "query",
+            "description": "Maximum number of recommendations to return. Default 10, max 100.",
+            "schema": { "type": "integer", "default": 10, "maximum": 100, "example": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ranked recommendations",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RecommendationsResponse" },
+                "example": {
+                  "generatedAt": "2026-06-12T03:00:00Z",
+                  "objective": "seek_opportunity",
+                  "recommendations": [
+                    {
+                      "rank": 1,
+                      "title": "Capital Rotating to ETH_DEFI",
+                      "action": "increase_attention",
+                      "confidence": 92,
+                      "risk": 35,
+                      "score": 81,
+                      "reasoning": [
+                        "Capital appears to be moving toward ETH DeFi.",
+                        "2 supporting signals"
+                      ],
+                      "supportingSignals": ["navsig_01J", "navsig_02J"],
+                      "supportingRoutes": ["route_01J"],
+                      "storyType": "CapitalRotation"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/maps/state": {
       "get": {
         "tags": ["State"],
@@ -371,6 +447,42 @@
   },
   "components": {
     "schemas": {
+      "RecommendationAction": {
+        "type": "string",
+        "enum": [
+          "increase_attention",
+          "investigate",
+          "monitor",
+          "avoid",
+          "reduce_exposure",
+          "increase_exposure",
+          "hold",
+          "wait"
+        ]
+      },
+      "Recommendation": {
+        "type": "object",
+        "properties": {
+          "rank": { "type": "integer", "description": "1-based rank, highest score first" },
+          "title": { "type": "string" },
+          "action": { "$ref": "#/components/schemas/RecommendationAction" },
+          "confidence": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Confidence 0–100" },
+          "risk": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Risk score 0–100" },
+          "score": { "type": "integer", "minimum": 0, "maximum": 100, "description": "Final recommendation score 0–100" },
+          "reasoning": { "type": "array", "items": { "type": "string" }, "description": "Bullet points explaining the recommendation" },
+          "supporting_signals": { "type": "array", "items": { "type": "string" }, "description": "NavigationSignal IDs supporting this recommendation" },
+          "supporting_routes": { "type": "array", "items": { "type": "string" }, "description": "RoutePrediction IDs supporting this recommendation" },
+          "story_type": { "type": "string", "nullable": true, "description": "Story category this recommendation derives from" }
+        }
+      },
+      "RecommendationsResponse": {
+        "type": "object",
+        "properties": {
+          "generatedAt": { "type": "string", "format": "date-time" },
+          "objective": { "type": "string", "nullable": true },
+          "recommendations": { "type": "array", "items": { "$ref": "#/components/schemas/Recommendation" } }
+        }
+      },
       "SignalType": {
         "type": "string",
         "enum": [

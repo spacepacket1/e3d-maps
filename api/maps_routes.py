@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 from api.serialization import model_to_dict
@@ -82,6 +83,32 @@ def get_maps_hazards(
 ) -> RouteResponse:
     result = service.list_hazards(limit=limit, offset=offset)
     return RouteResponse(status_code=200, body=_paginated_body(key="hazards", result=result))
+
+
+def get_maps_recommendations(
+    service: MapsAPIService,
+    *,
+    objective: str | None = None,
+    asset: str | None = None,
+    address: str | None = None,
+    story_type: str | None = None,
+    max_results: int = 10,
+) -> RouteResponse:
+    recommendations = service.get_recommendations(
+        objective=objective,
+        asset=asset,
+        address=address,
+        story_type=story_type,
+        max_results=max_results,
+    )
+    return RouteResponse(
+        status_code=200,
+        body={
+            "generatedAt": datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "objective": objective,
+            "recommendations": [model_to_dict(r) for r in recommendations],
+        },
+    )
 
 
 def _paginated_body(*, key: str, result: PaginatedResult[Any]) -> dict[str, Any]:

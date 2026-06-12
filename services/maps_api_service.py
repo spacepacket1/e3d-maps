@@ -15,9 +15,11 @@ from api.normalizers import (
 )
 from clients.clickhouse_client import ClickHouseClientError
 from schemas.navigation_signal import NavigationSignal
+from schemas.recommendation import Recommendation
 from schemas.route_prediction import RoutePrediction
 from schemas.story_type_definition import StoryTypeDefinition
 from schemas.traffic_state import TrafficState
+from services.recommendation_engine import STORY_TYPE_SIGNAL_TYPES, synthesize_recommendations
 
 T = TypeVar("T")
 
@@ -174,6 +176,30 @@ class MapsAPIService:
             offset=offset,
             normalizer=normalize_story_type_definition_row,
         )
+
+    def get_recommendations(
+        self,
+        *,
+        objective: str | None = None,
+        asset: str | None = None,
+        address: str | None = None,
+        story_type: str | None = None,
+        max_results: int = 10,
+    ) -> list[Recommendation]:
+        fetch_limit = max(50, max_results * 5)
+        signals_result = self.list_signals(asset=asset, limit=fetch_limit, offset=0)
+        signals = list(signals_result.items)
+
+        if story_type:
+            allowed = STORY_TYPE_SIGNAL_TYPES.get(story_type.lower())
+            if allowed:
+                signals = [s for s in signals if s.signal_type in allowed]
+
+        routes_result = self.list_routes(limit=20, offset=0)
+        routes = list(routes_result.items)
+
+        bounded = max(1, min(int(max_results), 100))
+        return synthesize_recommendations(signals, routes, objective=objective, max_results=bounded)
 
     def get_story_type(self, story_type: str) -> StoryTypeDefinition | None:
         rows = self._query_rows(

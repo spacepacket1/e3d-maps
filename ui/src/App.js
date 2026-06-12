@@ -8,6 +8,7 @@ import { SignalDetailPage } from "./pages/SignalDetail.js";
 import { RoutePredictionsPage } from "./pages/RoutePredictions.js";
 import { HazardsPage } from "./pages/Hazards.js";
 import { CongestionPage } from "./pages/Congestion.js";
+import { RecommendationsPage } from "./pages/Recommendations.js";
 import { StoryTypesPage } from "./pages/StoryTypes.js";
 import { DocsPage } from "./pages/Docs.js";
 import { WhitepaperPage } from "./pages/Whitepaper.js";
@@ -23,6 +24,7 @@ const pageRegistry = {
   routes: RoutePredictionsPage,
   hazards: HazardsPage,
   congestion: CongestionPage,
+  recommendations: RecommendationsPage,
   "story-types": StoryTypesPage,
   whitepaper: WhitepaperPage,
   docs: DocsPage,
