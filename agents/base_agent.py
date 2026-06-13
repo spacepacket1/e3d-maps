@@ -92,6 +92,7 @@ class BaseAgent:
             model=self.model_name,
             adapter_name=self.adapter_name,
             adapter_path=self.adapter_path,
+            temperature=0.4,
         )
 
     def parse_json(self, raw_response: str) -> Any:

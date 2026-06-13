@@ -90,7 +90,7 @@ export function SignalDetailPage({ api, navigate, params }) {
     <section className="panel detail-panel">
       <p className="panel-label">Question</p>
       <h3>${signal.question}</h3>
-      <p>${signal.answer}</p>
+      <blockquote className="signal-answer">${signal.answer}</blockquote>
       <dl className="detail-grid">
         <div>
           <dt>Confidence</dt>
@@ -122,7 +122,7 @@ export function SignalDetailPage({ api, navigate, params }) {
         </div>
         <div>
           <dt>Utility Score</dt>
-          <dd>Not available in Phase 7</dd>
+          <dd>Not yet scored</dd>
         </div>
         <div>
           <dt>Created</dt>

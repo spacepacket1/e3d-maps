@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any, Mapping, Sequence
 
-from clients._base_api_client import BaseE3DReadClient
+from clients._base_api_client import BaseE3DReadClient, E3DAPIClientError
 
 
 class E3DAPIClient(BaseE3DReadClient):
@@ -138,7 +138,10 @@ class E3DAPIClient(BaseE3DReadClient):
         prior_signals: Sequence[Mapping[str, Any]] | None = None,
         token_budget: int = DEFAULT_CONTEXT_TOKEN_BUDGET,
     ) -> dict[str, Any]:
-        market_state = self._get_json(path=self.market_state_path, missing_ok=True) or {}
+        try:
+            market_state = self._get_json(path=self.market_state_path, missing_ok=True) or {}
+        except E3DAPIClientError:
+            market_state = {}
         context = {
             "recent_stories": self.get_recent_stories(max_items=stories_max_items),
             "recent_theses": self.get_recent_theses(max_items=theses_max_items),

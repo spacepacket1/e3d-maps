@@ -1,5 +1,6 @@
 import { html, useEffect, useState } from "../vendor.js";
 import { formatDateTime, titleCaseLabel } from "../formatters.js";
+import { RECOMMENDATION_ACTION_CLASSES } from "../utils/recommendationActionClasses.js";
 
 const OBJECTIVES = [
   { value: "", label: "Any objective" },
@@ -9,17 +10,6 @@ const OBJECTIVES = [
   { value: "reduce_risk", label: "Reduce Risk" },
   { value: "monitor_market", label: "Monitor Market" },
 ];
-
-const ACTION_CLASSES = {
-  avoid: "badge-danger",
-  wait: "badge-warning",
-  reduce_exposure: "badge-warning",
-  monitor: "badge-neutral",
-  hold: "badge-neutral",
-  investigate: "badge-accent",
-  increase_attention: "badge-accent",
-  increase_exposure: "badge-positive",
-};
 
 export function RecommendationsPage({ api, navigate }) {
   const [filters, setFilters] = useState({ objective: "", asset: "" });
@@ -106,7 +96,7 @@ export function RecommendationsPage({ api, navigate }) {
                   <div className="rec-header">
                     <span className="rec-rank">#${rec.rank}</span>
                     <h3 className="rec-title">${rec.title}</h3>
-                    <span className=${"badge " + (ACTION_CLASSES[rec.action] || "badge-neutral")}>
+                    <span className=${"badge " + (RECOMMENDATION_ACTION_CLASSES[rec.action] || "badge-neutral")}>
                       ${titleCaseLabel(rec.action)}
                     </span>
                   </div>

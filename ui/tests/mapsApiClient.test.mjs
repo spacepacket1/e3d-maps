@@ -48,6 +48,37 @@ test("listSignals preserves response payloads", async () => {
   assert.equal(response.pagination.count, 1);
 });
 
+test("listSignals passes all supported filters through query params", async () => {
+  let capturedUrl = "";
+  const client = createMapsApiClient({
+    fetchImpl: async (url) => {
+      capturedUrl = url;
+      return {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          signals: [],
+          pagination: { count: 0, has_more: false, limit: 100, offset: 0 },
+        }),
+      };
+    },
+  });
+
+  await client.listSignals({
+    signalType: "route_hazard",
+    minConfidence: 0.75,
+    asset: "ETH",
+    chain: "ethereum",
+    limit: 100,
+  });
+
+  assert.match(capturedUrl, /signal_type=route_hazard/);
+  assert.match(capturedUrl, /min_confidence=0.75/);
+  assert.match(capturedUrl, /asset=ETH/);
+  assert.match(capturedUrl, /chain=ethereum/);
+  assert.match(capturedUrl, /limit=100/);
+});
+
 test("emptyPage provides a stable empty collection shape", () => {
   assert.deepEqual(emptyPage("signals"), {
     signals: [],
@@ -96,4 +127,41 @@ test("getRecommendations returns empty list on failure gracefully", async () => 
 
   const result = await client.getRecommendations({});
   assert.deepEqual(result, { generatedAt: null, objective: null, recommendations: [] });
+});
+
+test("getFlowGraph returns null for a 404 response", async () => {
+  const client = createMapsApiClient({
+    fetchImpl: async (url) => {
+      assert.equal(url, "/api/maps/graph");
+      return {
+        status: 404,
+        ok: false,
+        statusText: "Not Found",
+        json: async () => ({ status: "not_found" }),
+      };
+    },
+  });
+
+  const graph = await client.getFlowGraph();
+  assert.equal(graph, null);
+});
+
+test("getFlowGraph preserves the graph payload when the endpoint is available", async () => {
+  const payload = {
+    nodes: [{ id: "stablecoins" }],
+    edges: [{ origin: "stablecoins", destination: "ETH_DEFI" }],
+  };
+  const client = createMapsApiClient({
+    fetchImpl: async (url) => {
+      assert.equal(url, "/api/maps/graph");
+      return {
+        status: 200,
+        ok: true,
+        json: async () => payload,
+      };
+    },
+  });
+
+  const graph = await client.getFlowGraph();
+  assert.deepEqual(graph, payload);
 });

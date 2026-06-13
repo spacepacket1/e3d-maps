@@ -96,6 +96,10 @@ export function createMapsApiClient({ baseUrl = "", fetchImpl = globalThis.fetch
       });
       return body || emptyPage("hazards");
     },
+    async getFlowGraph() {
+      const body = await request("/api/maps/graph", { allowNotFound: true });
+      return body || null;
+    },
     async listStoryTypes(filters = {}) {
       const body = await request("/api/story-types", {
         query: {

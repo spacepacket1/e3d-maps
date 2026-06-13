@@ -263,7 +263,7 @@ class MapsRunner:
     def _load_context(self, *, allow_sample_fallback: bool) -> dict[str, Any]:
         try:
             context = self.e3d_client.get_market_context()
-            return {
+            built = {
                 "recent_stories": context.get("recent_stories", []),
                 "recent_theses": context.get("recent_theses", []),
                 "stablecoin_activity": self._coerce_summary_block(context.get("token_activity")),
@@ -272,6 +272,12 @@ class MapsRunner:
                 "prior_signals": context.get("prior_signals", []),
                 "market_state": context.get("market_state", {}),
             }
+            if not built["recent_stories"] and not built["recent_theses"]:
+                raise E3DAPIClientError(
+                    "E3D market context returned no stories or theses — "
+                    "check E3D_API_KEY and E3D_BASE_URL"
+                )
+            return built
         except E3DAPIClientError:
             if not allow_sample_fallback:
                 raise

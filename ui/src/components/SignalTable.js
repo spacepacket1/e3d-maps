@@ -1,6 +1,8 @@
 import { html } from "../vendor.js";
 import { formatDateTime, titleCaseLabel } from "../formatters.js";
 import { ConfidenceBadge } from "./ConfidenceBadge.js";
+import { truncateAnswer } from "../utils/truncateAnswer.js";
+import { riskRowClass } from "../utils/riskRowClass.js";
 
 export function SignalTable({ signals, navigate, emptyLabel = "No signals available." }) {
   if (!signals.length) {
@@ -13,6 +15,7 @@ export function SignalTable({ signals, navigate, emptyLabel = "No signals availa
         <thead>
           <tr>
             <th>Type</th>
+            <th>Answer</th>
             <th>Confidence</th>
             <th>Horizon</th>
             <th>Origin</th>
@@ -24,7 +27,7 @@ export function SignalTable({ signals, navigate, emptyLabel = "No signals availa
         <tbody>
           ${signals.map(
             (signal) => html`
-              <tr key=${signal.id}>
+              <tr key=${signal.id} className=${riskRowClass(signal.risk_level)}>
                 <td>
                   <a
                     href=${`/signals/${signal.id}`}
@@ -33,6 +36,7 @@ export function SignalTable({ signals, navigate, emptyLabel = "No signals availa
                     ${titleCaseLabel(signal.signal_type)}
                   </a>
                 </td>
+                <td className="answer-preview">${truncateAnswer(signal.answer)}</td>
                 <td>${html`<${ConfidenceBadge} value=${signal.confidence} />`}</td>
                 <td>${signal.time_horizon_hours}h</td>
                 <td>${signal.origin || "n/a"}</td>

@@ -1,6 +1,9 @@
 import { html, useEffect, useState } from "../vendor.js";
 import { formatConfidence, formatDateTime, titleCaseLabel, toArray } from "../formatters.js";
+import { FlowGraph } from "../components/FlowGraph.js";
 import { SignalTable } from "../components/SignalTable.js";
+import { RECOMMENDATION_ACTION_CLASSES } from "../utils/recommendationActionClasses.js";
+import { dedupeUrgentSignals } from "../utils/urgentSignals.js";
 
 const AUTO_REFRESH_MS = 60_000;
 
@@ -13,6 +16,8 @@ export function MapsHomePage({ api, navigate }) {
     latestSignals: [],
     hazards: [],
     congestionSignals: [],
+    allSignals: [],
+    topRec: null,
   });
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -28,12 +33,15 @@ export function MapsHomePage({ api, navigate }) {
       }));
 
       try {
-        const [trafficState, latestSignalsResponse, hazardsResponse, congestionResponse] = await Promise.all([
-          api.getState(),
-          api.listSignals({ minConfidence: 0.7, limit: 5 }),
-          api.listHazards({ limit: 5 }),
-          api.listSignals({ signalType: "congestion_formation", limit: 5 }),
-        ]);
+        const [trafficState, latestSignalsResponse, hazardsResponse, congestionResponse, signalsForGraphResponse, recsResponse] =
+          await Promise.all([
+            api.getState(),
+            api.listSignals({ minConfidence: 0.7, limit: 5 }),
+            api.listHazards({ limit: 5 }),
+            api.listSignals({ signalType: "congestion_formation", limit: 5 }),
+            api.listSignals({ limit: 200 }),
+            api.getRecommendations({ maxResults: 1 }).catch(() => null),
+          ]);
 
         if (cancelled) {
           return;
@@ -47,6 +55,8 @@ export function MapsHomePage({ api, navigate }) {
           latestSignals: toArray(latestSignalsResponse?.signals),
           hazards: toArray(hazardsResponse?.hazards),
           congestionSignals: toArray(congestionResponse?.signals),
+          allSignals: toArray(signalsForGraphResponse?.signals),
+          topRec: recsResponse?.recommendations?.[0] || null,
         });
       } catch (error) {
         if (cancelled) {
@@ -70,12 +80,22 @@ export function MapsHomePage({ api, navigate }) {
   }, [api, reloadToken]);
 
   const trafficState = state.trafficState;
+  const dedupedUrgent = dedupeUrgentSignals([
+    state.hazards,
+    state.congestionSignals,
+    state.latestSignals,
+  ]);
   const hasData = Boolean(
     trafficState ||
       state.latestSignals.length ||
       state.hazards.length ||
-      state.congestionSignals.length
+      state.congestionSignals.length ||
+      state.allSignals.length
   );
+
+  function handleNodeClick(_nodeId) {
+    navigate("/signals");
+  }
 
   return html`
     <section className="page-header">
@@ -91,10 +111,78 @@ export function MapsHomePage({ api, navigate }) {
     ${state.error ? html`<p className="error-banner">${state.error}</p>` : null}
     ${state.loading
       ? html`<p className="empty-copy">Loading current map state...</p>`
-      : !hasData
-        ? html`<p className="empty-copy">No map state has been published yet.</p>`
-        : html`
-            <section className="panel-grid">
+      : html`
+            ${dedupedUrgent.length > 0
+              ? html`
+                  <section className="alert-strip">
+                    <span className="alert-strip-label">
+                      ⚠ ${dedupedUrgent.length} urgent signal${dedupedUrgent.length === 1 ? "" : "s"}
+                    </span>
+                    <ul className="alert-strip-list">
+                      ${dedupedUrgent.slice(0, 3).map(
+                        (signal) => html`
+                          <li key=${signal.id}>
+                            <a href=${`/signals/${signal.id}`} onClick=${(event) => jumpToSignal(event, signal.id, navigate)}>
+                              ${titleCaseLabel(signal.signal_type)}${signal.destination ? ` → ${signal.destination}` : ""}
+                            </a>
+                            <span className=${`badge badge-${signal.risk_level === "critical" ? "danger" : "warning"}`}>
+                              ${titleCaseLabel(signal.risk_level)}
+                            </span>
+                          </li>
+                        `
+                      )}
+                    </ul>
+                  </section>
+                `
+              : null}
+            ${!hasData ? html`<p className="empty-copy">No map state has been published yet.</p>` : null}
+            <section className="panel" style="padding: 0; overflow: hidden; margin-bottom: 1.5rem;">
+              <div style="padding: 1rem 1.25rem 0.5rem;">
+                <p className="panel-label">Live Capital Flow Map</p>
+                <p style="font-size:0.8rem;color:var(--muted);margin:0 0 0.5rem;">
+                  Edge thickness = confidence · Color = risk level · Hover an edge for detail
+                </p>
+              </div>
+              <${FlowGraph}
+                signals=${state.allSignals}
+                onNodeClick=${handleNodeClick}
+              />
+            </section>
+            ${hasData
+              ? html`<section className="panel-grid">
+              ${state.topRec
+                ? html`
+                    <article className="panel rec-preview-panel">
+                      <p className="panel-label">Top Recommendation</p>
+                      <div className="rec-preview-header">
+                        <span className="rec-preview-rank">#${state.topRec.rank}</span>
+                        <h3 className="rec-preview-title">${state.topRec.title}</h3>
+                        <span
+                          className=${"badge " + (RECOMMENDATION_ACTION_CLASSES[state.topRec.action] || "badge-neutral")}
+                        >
+                          ${titleCaseLabel(state.topRec.action)}
+                        </span>
+                      </div>
+                      ${state.topRec.reasoning?.[0]
+                        ? html`<p className="rec-preview-reason">${state.topRec.reasoning[0]}</p>`
+                        : null}
+                      <div className="rec-preview-meta">
+                        <span className="score-chip">Score <strong>${state.topRec.score}</strong></span>
+                        <span className="score-chip">Confidence <strong>${state.topRec.confidence}%</strong></span>
+                      </div>
+                      <a
+                        href="/recommendations"
+                        className="rec-preview-link"
+                        onClick=${(event) => {
+                          event.preventDefault();
+                          navigate("/recommendations");
+                        }}
+                      >
+                        View all recommendations →
+                      </a>
+                    </article>
+                  `
+                : null}
               <article className="panel">
                 <p className="panel-label">Market State</p>
                 <h3>${titleCaseLabel(trafficState?.market_state)}</h3>
@@ -178,7 +266,8 @@ export function MapsHomePage({ api, navigate }) {
                     `
                   : html`<p className="empty-copy">No congestion zones have been detected.</p>`}
               </article>
-            </section>
+            </section>`
+              : null}
           `}
 
     <section className="panel">
