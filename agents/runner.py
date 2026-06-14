@@ -230,7 +230,20 @@ class MapsRunner:
                     )
                     continue
 
-                written_signals = clickhouse.insert_navigation_signal(run_result.navigation_signal)
+                signal = run_result.navigation_signal
+                if clickhouse.recent_signal_exists(
+                    signal.signal_type,
+                    signal.origin or "",
+                    signal.destination or "",
+                    within_hours=4,
+                ):
+                    result = self._replace_result(
+                        result,
+                        successful_questions=result.successful_questions + 1,
+                    )
+                    continue
+
+                written_signals = clickhouse.insert_navigation_signal(signal)
                 written_routes = clickhouse.insert_route_predictions(run_result.route_predictions)
                 result = self._replace_result(
                     result,

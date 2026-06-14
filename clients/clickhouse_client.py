@@ -47,6 +47,43 @@ class ClickHouseClient:
         self.output = output
         self._request_executor = request_executor or self._default_request_executor
 
+    def recent_signal_exists(
+        self,
+        signal_type: str,
+        origin: str,
+        destination: str,
+        *,
+        within_hours: int = 4,
+    ) -> bool:
+        """Return True if an identical (type, origin, destination) signal was written within within_hours."""
+        if self.dry_run:
+            return False
+        st = self._sql_string(signal_type)
+        og = self._sql_string(origin)
+        dst = self._sql_string(destination)
+        query = (
+            f"SELECT count() AS cnt FROM NavigationSignals "
+            f"WHERE signal_type = {st} AND origin = {og} AND destination = {dst} "
+            f"AND created_at >= now() - INTERVAL {within_hours} HOUR "
+            "FORMAT JSONEachRow"
+        )
+        body = query.encode("utf-8")
+        try:
+            raw = self._request_executor(body)
+        except (HTTPError, URLError, ClickHouseClientError):
+            return False
+        for line in raw.decode("utf-8", errors="replace").splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                row = json.loads(stripped)
+                if int(row.get("cnt", 0)) > 0:
+                    return True
+            except (ValueError, KeyError):
+                pass
+        return False
+
     def insert_navigation_signal(self, record: NavigationSignal | dict[str, Any]) -> int:
         return self.insert_navigation_signals([record])
 
