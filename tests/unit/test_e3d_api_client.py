@@ -48,7 +48,7 @@ def test_get_recent_theses_handles_missing_payload_gracefully():
 def test_get_market_context_trims_inputs_to_budget_in_priority_order():
     responses = {
         "https://e3d.ai/api/stories?limit=4": {"stories": [{"id": f"story_{index}", "summary": "s" * 120} for index in range(4)]},
-        "https://e3d.ai/api/theses?limit=3": {"theses": [{"id": f"thesis_{index}", "summary": "t" * 120} for index in range(3)]},
+        "https://e3d.ai/api/theses?limit=3&status=all": {"theses": [{"id": f"thesis_{index}", "summary": "t" * 120} for index in range(3)]},
         "https://e3d.ai/api/wallets/activity?limit=2": {"items": [{"id": f"wallet_{index}", "summary": "w" * 120} for index in range(2)]},
         "https://e3d.ai/api/tokens/activity?limit=1": {"items": [{"id": "token_1", "summary": "x" * 120}]},
         "https://e3d.ai/api/flows/exchange?limit=2": {"items": [{"id": f"flow_{index}", "summary": "f" * 120} for index in range(2)]},

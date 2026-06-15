@@ -43,7 +43,7 @@ class BaseE3DReadClient:
         url = self._build_url(path=path, query=query)
         headers = {"Accept": "application/json"}
         if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+            headers["x-api-key"] = self.api_key
 
         request = Request(url=url, headers=headers, method="GET")
         attempts = max(1, self.max_retries + 1)

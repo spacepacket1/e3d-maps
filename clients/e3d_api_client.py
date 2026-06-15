@@ -58,7 +58,7 @@ class E3DAPIClient(BaseE3DReadClient):
     def get_recent_theses(self, *, max_items: int = DEFAULT_THESES_MAX_ITEMS) -> list[dict[str, Any]]:
         payload = self._get_json(
             path=self.theses_path,
-            query={"limit": max_items},
+            query={"limit": max_items, "status": "all"},
             missing_ok=True,
         )
         return self._coerce_items(payload, max_items=max_items)
