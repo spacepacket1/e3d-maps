@@ -231,6 +231,13 @@ class MapsRunner:
                     continue
 
                 signal = run_result.navigation_signal
+                if signal.confidence < self.runner_settings.min_signal_confidence or not (signal.destination or "").strip():
+                    result = self._replace_result(
+                        result,
+                        skipped_questions=result.skipped_questions + 1,
+                    )
+                    continue
+
                 if clickhouse.recent_signal_exists(
                     signal.signal_type,
                     signal.origin or "",
