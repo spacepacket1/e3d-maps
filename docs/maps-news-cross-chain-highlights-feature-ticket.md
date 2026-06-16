@@ -896,7 +896,7 @@ In `services/maps_api_service.py`, add:
 Both should read the newest row by `created_at DESC, id DESC`, mirroring existing patterns
 such as `get_latest_state()`.
 
-#### 5b. Add route handlers
+#### 5b. Add route handlers in `e3d-maps`
 
 In `api/maps_routes.py`, add:
 
@@ -958,7 +958,33 @@ requirement, not a route-handler requirement.
 - return `not_found` only if no artifact exists yet
 - frontend should treat that as an empty state, not an error banner
 
-#### 5c. Update OpenAPI and docs
+These handlers define the contract and response shape, but they do not by themselves make
+the public HTTP endpoints live. The public `/api/maps/...` surface is owned by the
+separate main `e3d` server repository.
+
+#### 5c. Add matching public routes in the main `e3d` server
+
+In the `e3d` repository, update `server/mapsNavigationRoutes.js` to add exact Express
+handlers for:
+
+- `GET /api/maps/news`
+- `GET /api/maps/cross-chain`
+
+Those handlers must read from:
+
+- `MapsNewsBriefs`
+- `CrossChainActivityStates`
+
+using:
+
+- `ORDER BY created_at DESC, id DESC LIMIT 1`
+
+Return the same JSON contract defined above for the Python route layer in this repo.
+
+This cross-repo step is required. Pulling `e3d-maps` alone is not sufficient to expose
+the new public endpoints.
+
+#### 5d. Update OpenAPI and docs
 
 Update `ui/openapi.json` and any API docs page inputs as needed so the new endpoints are
 represented.
@@ -970,6 +996,7 @@ these endpoints.
 
 - Service can read latest rows for both artifact types
 - Route handlers return stable JSON responses
+- Main `e3d` server exposes matching public endpoints
 - OpenAPI reflects both endpoints
 
 ### Verification
@@ -978,6 +1005,8 @@ Add tests similar to the current route / service tests:
 
 1. latest news brief returns 200
 2. latest cross-chain state returns 200
+3. `e3d` server `GET /api/maps/news` returns 200 when a row exists
+4. `e3d` server `GET /api/maps/cross-chain` returns 200 when a row exists
 3. missing artifact returns 404 `not_found`
 
 ---
