@@ -1225,6 +1225,190 @@ button {
 
 /* ── End recommendations ──────────────────────────────── */
 
+/* ── API Docs — Try It & Code Samples ─────────────────── */
+
+.try-it-section,
+.code-samples-section {
+  display: grid;
+  gap: 10px;
+}
+
+.try-it-params {
+  display: grid;
+  gap: 8px;
+}
+
+.try-it-param-row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.try-it-label-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.try-it-param-name {
+  font-family: "Menlo", "Monaco", monospace;
+  font-size: 0.85rem;
+}
+
+.try-it-param-badge {
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-family: "Menlo", "Monaco", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.try-it-badge-path {
+  background: rgba(141, 94, 18, 0.14);
+  color: var(--warning);
+}
+
+.try-it-badge-query {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.try-it-input {
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 7px 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text);
+  width: 100%;
+}
+
+.try-it-input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.try-it-run-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.04);
+  margin-top: 4px;
+}
+
+.try-it-url {
+  flex: 1;
+  font-family: "Menlo", "Monaco", monospace;
+  font-size: 0.78rem;
+  color: var(--muted);
+  word-break: break-all;
+  min-width: 0;
+}
+
+.try-it-run-btn {
+  padding: 8px 22px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+  min-width: 72px;
+}
+
+.try-it-run-btn:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.try-it-run-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.try-it-result {
+  display: grid;
+  gap: 6px;
+}
+
+.try-it-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-family: "Menlo", "Monaco", monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.try-it-status-badge.is-ok {
+  background: rgba(10, 127, 104, 0.14);
+  color: var(--accent);
+}
+
+.try-it-status-badge.is-err {
+  background: rgba(156, 52, 52, 0.12);
+  color: var(--danger);
+}
+
+.try-it-output {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.try-it-fetch-error {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(156, 52, 52, 0.08);
+  border: 1px solid rgba(156, 52, 52, 0.18);
+  color: var(--danger);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.code-tab-bar {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.code-tab-btn {
+  padding: 5px 14px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.code-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text);
+}
+
+.code-tab-btn.is-active {
+  background: var(--text);
+  border-color: var(--text);
+  color: #fff;
+}
+
+/* ── End API Docs interactive ──────────────────────────── */
+
 @media (max-width: 720px) {
   .app-shell {
     padding: 20px 14px 40px;
@@ -1267,5 +1451,18 @@ button {
 
   .alert-strip-label {
     white-space: normal;
+  }
+
+  .try-it-param-row {
+    grid-template-columns: 1fr;
+  }
+
+  .try-it-run-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .try-it-run-btn {
+    width: 100%;
   }
 }
