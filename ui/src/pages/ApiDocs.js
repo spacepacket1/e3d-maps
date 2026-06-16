@@ -366,6 +366,7 @@ int main(void) {
 function EndpointCard({ endpoint }) {
   const { path, description, pathParams, queryParams, exampleResponse } = endpoint;
 
+  const [collapsed, setCollapsed] = useState(true);
   const [pathValues, setPathValues] = useState(
     Object.fromEntries(pathParams.map((p) => [p.name, ""]))
   );
@@ -409,203 +410,225 @@ function EndpointCard({ endpoint }) {
     "article",
     { className: "panel api-endpoint" },
 
-    // ── Header ──
+    // ── Toggle header (always visible) ──
     el(
-      "div",
-      { className: "api-route" },
-      el("span", { className: "api-method" }, "GET"),
-      el("code", { className: "api-path" }, path)
-    ),
-    el("p", { className: "api-description" }, description),
-
-    // ── Params table ──
-    hasParams &&
+      "button",
+      {
+        className: "api-endpoint-toggle",
+        onClick: () => setCollapsed((c) => !c),
+        "aria-expanded": String(!collapsed),
+      },
       el(
         "div",
-        { className: "table-wrap" },
+        { className: "api-endpoint-header" },
         el(
-          "table",
-          { className: "data-table api-params" },
+          "div",
+          { className: "api-route" },
+          el("span", { className: "api-method" }, "GET"),
+          el("code", { className: "api-path" }, path)
+        ),
+        el("div", { className: "api-description" }, description)
+      ),
+      el(
+        "span",
+        { className: `api-toggle-chevron${collapsed ? "" : " is-open"}` },
+        "›"
+      )
+    ),
+
+    // ── Collapsible body ──
+    !collapsed &&
+      el(
+        "div",
+        { className: "api-endpoint-body" },
+
+        // Params table
+        hasParams &&
           el(
-            "thead",
-            null,
+            "div",
+            { className: "table-wrap" },
             el(
-              "tr",
-              null,
-              el("th", null, "Parameter"),
-              el("th", null, "In"),
-              el("th", null, "Type"),
-              el("th", null, "Description")
+              "table",
+              { className: "data-table api-params" },
+              el(
+                "thead",
+                null,
+                el(
+                  "tr",
+                  null,
+                  el("th", null, "Parameter"),
+                  el("th", null, "In"),
+                  el("th", null, "Type"),
+                  el("th", null, "Description")
+                )
+              ),
+              el(
+                "tbody",
+                null,
+                ...pathParams.map((p) =>
+                  el(
+                    "tr",
+                    { key: `path-${p.name}` },
+                    el("td", null, el("code", null, p.name)),
+                    el("td", { className: "api-type" }, "path"),
+                    el("td", { className: "api-type" }, "string"),
+                    el("td", null, p.desc)
+                  )
+                ),
+                ...queryParams.map((p) =>
+                  el(
+                    "tr",
+                    { key: `query-${p.name}` },
+                    el("td", null, el("code", null, p.name)),
+                    el("td", { className: "api-type" }, "query"),
+                    el("td", { className: "api-type" }, p.type),
+                    el("td", null, p.desc)
+                  )
+                )
+              )
             )
           ),
-          el(
-            "tbody",
-            null,
-            ...pathParams.map((p) =>
-              el(
-                "tr",
-                { key: `path-${p.name}` },
-                el("td", null, el("code", null, p.name)),
-                el("td", { className: "api-type" }, "path"),
-                el("td", { className: "api-type" }, "string"),
-                el("td", null, p.desc)
+
+        // Try It
+        el(
+          "div",
+          { className: "try-it-section" },
+          el("p", { className: "panel-label" }, "Try It"),
+
+          hasParams &&
+            el(
+              "div",
+              { className: "try-it-params" },
+              ...pathParams.map((p) =>
+                el(
+                  "div",
+                  { key: `pi-${p.name}`, className: "try-it-param-row" },
+                  el(
+                    "div",
+                    { className: "try-it-label-wrap" },
+                    el("code", { className: "try-it-param-name" }, p.name),
+                    el("span", { className: "try-it-param-badge try-it-badge-path" }, "path")
+                  ),
+                  el("input", {
+                    className: "try-it-input",
+                    type: "text",
+                    placeholder: p.placeholder || p.name,
+                    value: pathValues[p.name],
+                    onChange: (e) =>
+                      setPathValues({ ...pathValues, [p.name]: e.target.value }),
+                  })
+                )
+              ),
+              ...queryParams.map((p) =>
+                el(
+                  "div",
+                  { key: `qi-${p.name}`, className: "try-it-param-row" },
+                  el(
+                    "div",
+                    { className: "try-it-label-wrap" },
+                    el("code", { className: "try-it-param-name" }, p.name),
+                    el("span", { className: "try-it-param-badge try-it-badge-query" }, "query")
+                  ),
+                  p.enum
+                    ? el(
+                        "select",
+                        {
+                          className: "try-it-input",
+                          value: queryValues[p.name],
+                          onChange: (e) =>
+                            setQueryValues({ ...queryValues, [p.name]: e.target.value }),
+                        },
+                        el("option", { value: "" }, "— any —"),
+                        ...p.enum.map((v) => el("option", { key: v, value: v }, v))
+                      )
+                    : el("input", {
+                        className: "try-it-input",
+                        type:
+                          p.type === "integer" || p.type === "float"
+                            ? "number"
+                            : "text",
+                        placeholder: p.placeholder || "",
+                        value: queryValues[p.name],
+                        onChange: (e) =>
+                          setQueryValues({ ...queryValues, [p.name]: e.target.value }),
+                      })
+                )
               )
             ),
-            ...queryParams.map((p) =>
+
+          el(
+            "div",
+            { className: "try-it-run-row" },
+            el("code", { className: "try-it-url" }, `GET ${BASE}${fullUrl}`),
+            el(
+              "button",
+              {
+                className: "try-it-run-btn",
+                onClick: run,
+                disabled: loading || pathParamsMissing,
+                title: pathParamsMissing ? "Fill in required path parameters" : undefined,
+              },
+              loading ? "Running…" : "Run"
+            )
+          ),
+
+          result &&
+            el(
+              "div",
+              { className: "try-it-result" },
               el(
-                "tr",
-                { key: `query-${p.name}` },
-                el("td", null, el("code", null, p.name)),
-                el("td", { className: "api-type" }, "query"),
-                el("td", { className: "api-type" }, p.type),
-                el("td", null, p.desc)
+                "span",
+                { className: `try-it-status-badge${result.ok ? " is-ok" : " is-err"}` },
+                `${result.status} ${result.ok ? "OK" : "Error"}`
+              ),
+              el(
+                "pre",
+                { className: "code-block try-it-output" },
+                typeof result.data === "string"
+                  ? result.data
+                  : JSON.stringify(result.data, null, 2)
+              )
+            ),
+
+          fetchError &&
+            el(
+              "div",
+              { className: "try-it-fetch-error" },
+              `Request failed: ${fetchError}`
+            )
+        ),
+
+        // Code Samples
+        el(
+          "div",
+          { className: "code-samples-section" },
+          el("p", { className: "panel-label" }, "Code Samples"),
+          el(
+            "div",
+            { className: "code-tab-bar" },
+            CODE_TABS.map((tab) =>
+              el(
+                "button",
+                {
+                  key: tab.id,
+                  className: `code-tab-btn${codeTab === tab.id ? " is-active" : ""}`,
+                  onClick: () => setCodeTab(tab.id),
+                },
+                tab.label
               )
             )
-          )
-        )
-      ),
-
-    // ── Try It ──
-    el(
-      "div",
-      { className: "try-it-section" },
-      el("p", { className: "panel-label" }, "Try It"),
-
-      hasParams &&
-        el(
-          "div",
-          { className: "try-it-params" },
-          ...pathParams.map((p) =>
-            el(
-              "div",
-              { key: `pi-${p.name}`, className: "try-it-param-row" },
-              el(
-                "div",
-                { className: "try-it-label-wrap" },
-                el("code", { className: "try-it-param-name" }, p.name),
-                el("span", { className: "try-it-param-badge try-it-badge-path" }, "path")
-              ),
-              el("input", {
-                className: "try-it-input",
-                type: "text",
-                placeholder: p.placeholder || p.name,
-                value: pathValues[p.name],
-                onChange: (e) =>
-                  setPathValues({ ...pathValues, [p.name]: e.target.value }),
-              })
-            )
           ),
-          ...queryParams.map((p) =>
-            el(
-              "div",
-              { key: `qi-${p.name}`, className: "try-it-param-row" },
-              el(
-                "div",
-                { className: "try-it-label-wrap" },
-                el("code", { className: "try-it-param-name" }, p.name),
-                el("span", { className: "try-it-param-badge try-it-badge-query" }, "query")
-              ),
-              p.enum
-                ? el(
-                    "select",
-                    {
-                      className: "try-it-input",
-                      value: queryValues[p.name],
-                      onChange: (e) =>
-                        setQueryValues({ ...queryValues, [p.name]: e.target.value }),
-                    },
-                    el("option", { value: "" }, "— any —"),
-                    ...p.enum.map((v) => el("option", { key: v, value: v }, v))
-                  )
-                : el("input", {
-                    className: "try-it-input",
-                    type:
-                      p.type === "integer" || p.type === "float"
-                        ? "number"
-                        : "text",
-                    placeholder: p.placeholder || "",
-                    value: queryValues[p.name],
-                    onChange: (e) =>
-                      setQueryValues({ ...queryValues, [p.name]: e.target.value }),
-                  })
-            )
-          )
+          el("pre", { className: "code-block" }, genCode(codeTab, fullUrl))
         ),
 
-      el(
-        "div",
-        { className: "try-it-run-row" },
-        el("code", { className: "try-it-url" }, `GET ${BASE}${fullUrl}`),
-        el(
-          "button",
-          {
-            className: "try-it-run-btn",
-            onClick: run,
-            disabled: loading || pathParamsMissing,
-            title: pathParamsMissing ? "Fill in required path parameters" : undefined,
-          },
-          loading ? "Running…" : "Run"
-        )
-      ),
-
-      result &&
+        // Example Response
         el(
           "div",
-          { className: "try-it-result" },
-          el(
-            "span",
-            {
-              className: `try-it-status-badge${result.ok ? " is-ok" : " is-err"}`,
-            },
-            `${result.status} ${result.ok ? "OK" : "Error"}`
-          ),
-          el(
-            "pre",
-            { className: "code-block try-it-output" },
-            typeof result.data === "string"
-              ? result.data
-              : JSON.stringify(result.data, null, 2)
-          )
-        ),
-
-      fetchError &&
-        el(
-          "div",
-          { className: "try-it-fetch-error" },
-          `Request failed: ${fetchError}`
+          { className: "api-example" },
+          el("p", { className: "panel-label" }, "Example response"),
+          el("pre", { className: "code-block" }, exampleResponse)
         )
-    ),
-
-    // ── Code Samples ──
-    el(
-      "div",
-      { className: "code-samples-section" },
-      el("p", { className: "panel-label" }, "Code Samples"),
-      el(
-        "div",
-        { className: "code-tab-bar" },
-        CODE_TABS.map((tab) =>
-          el(
-            "button",
-            {
-              key: tab.id,
-              className: `code-tab-btn${codeTab === tab.id ? " is-active" : ""}`,
-              onClick: () => setCodeTab(tab.id),
-            },
-            tab.label
-          )
-        )
-      ),
-      el("pre", { className: "code-block" }, genCode(codeTab, fullUrl))
-    ),
-
-    // ── Example Response ──
-    el(
-      "div",
-      { className: "api-example" },
-      el("p", { className: "panel-label" }, "Example response"),
-      el("pre", { className: "code-block" }, exampleResponse)
-    )
+      )
   );
 }
 

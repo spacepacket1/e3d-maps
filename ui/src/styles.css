@@ -708,8 +708,54 @@ button {
 }
 
 .api-endpoint {
-  display: grid;
+  padding: 0;
+  overflow: hidden;
+}
+
+.api-endpoint-toggle {
+  display: flex;
+  align-items: flex-start;
   gap: 14px;
+  width: 100%;
+  padding: 20px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: inherit;
+}
+
+.api-endpoint-toggle:hover {
+  background: rgba(0, 0, 0, 0.025);
+}
+
+.api-endpoint-header {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.api-toggle-chevron {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  display: inline-block;
+  transition: transform 0.18s ease;
+}
+
+.api-toggle-chevron.is-open {
+  transform: rotate(90deg);
+}
+
+.api-endpoint-body {
+  padding: 0 20px 20px;
+  display: grid;
+  gap: 18px;
+  border-top: 1px solid var(--panel-border);
+  padding-top: 18px;
 }
 
 .api-route {
