@@ -74,6 +74,16 @@ REAL_WORLD_ASSETS
 
 If you can identify a specific protocol or asset as the congestion zone, name it alongside the category.
 
+## Route Naming Discipline
+
+Treat bridge and L2 crowding as route-level congestion when the evidence supports it.
+
+- Prefer explicit route wording in the answer when the crowding is about a corridor rather than only a destination: `Ethereum -> Base`, `Ethereum -> Solana`, `CEX -> Ethereum`.
+- Distinguish venue, chain, and DeFi destination cleanly. Use `BINANCE` or `CEX` for venues, `BASE` / `ARBITRUM` / `OPTIMISM` / `SOLANA` for chains, and `BASE_DEFI` / `ETH_DEFI` when the congestion is specifically inside a DeFi destination on that chain.
+- If the evidence does not support `Binance`, prefer `CEX`.
+- If the evidence does not support a specific L2 name, prefer `L2_NETWORKS`.
+- Avoid generic labels like `exchange` when a stronger canonical route or zone label is supported by the evidence.
+
 ## What Strong Evidence Looks Like
 
 Emit at confidence 0.7+ when you see two or more of:

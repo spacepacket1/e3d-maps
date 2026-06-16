@@ -17,19 +17,82 @@ test("deriveEdges keeps only the highest-confidence signal per origin-destinatio
   ]);
 
   assert.deepEqual(
-    edges.map((edge) => edge.id),
-    ["strong", "other"]
+    edges.map((edge) => ({ origin: edge.origin, destination: edge.destination, source: edge.source })),
+    [
+      { origin: "stablecoins", destination: "ETH_DEFI", source: "signal" },
+      { origin: "ETH", destination: "PERPS", source: "signal" },
+    ]
   );
 });
 
 test("deriveEdges ignores invalid and self-referential node pairs", () => {
-  const edges = deriveEdges([
-    { id: "self", origin: "ETH", destination: "ETH", confidence: 0.8, risk_level: "medium" },
-    { id: "unknown-origin", origin: "SOL", destination: "PERPS", confidence: 0.8, risk_level: "high" },
-    { id: "unknown-dest", origin: "ETH", destination: "SOL", confidence: 0.8, risk_level: "high" },
-  ]);
+  const edges = deriveEdges(
+    [
+      { id: "self", origin: "ETH", destination: "ETH", confidence: 0.8, risk_level: "medium" },
+      { id: "unknown-origin", origin: "SOL", destination: "PERPS", confidence: 0.8, risk_level: "high" },
+      { id: "unknown-dest", origin: "ETH", destination: "SOL", confidence: 0.8, risk_level: "high" },
+    ],
+    [
+      {
+        normalized_origin: "cross_chain_bridges",
+        normalized_destination: "cross_chain_bridges",
+        signal_strength: 0.9,
+        risk_level: "high",
+      },
+      {
+        normalized_origin: "unknown",
+        normalized_destination: "solana",
+        signal_strength: 0.7,
+        risk_level: "medium",
+      },
+    ]
+  );
 
   assert.deepEqual(edges, []);
+});
+
+test("deriveEdges accepts cross-chain routes and prefers them on equal or higher confidence", () => {
+  const edges = deriveEdges(
+    [
+      { origin: "ETH", destination: "PERPS", confidence: 0.61, risk_level: "medium" },
+      { origin: "ethereum", destination: "solana", confidence: 0.52, risk_level: "low" },
+    ],
+    [
+      {
+        normalized_origin: "ethereum",
+        normalized_destination: "solana",
+        signal_strength: 0.52,
+        risk_level: "high",
+      },
+      {
+        normalized_origin: "cross_chain_bridges",
+        normalized_destination: "optimism",
+        signal_strength: 0.74,
+        risk_level: "medium",
+      },
+    ]
+  );
+
+  assert.deepEqual(
+    edges,
+    [
+      { origin: "ETH", destination: "PERPS", confidence: 0.61, risk_level: "medium", source: "signal" },
+      {
+        origin: "ethereum",
+        destination: "solana",
+        confidence: 0.52,
+        risk_level: "high",
+        source: "cross_chain",
+      },
+      {
+        origin: "cross_chain_bridges",
+        destination: "optimism",
+        confidence: 0.74,
+        risk_level: "medium",
+        source: "cross_chain",
+      },
+    ]
+  );
 });
 
 test("bezierPath uses the configured SVG layout coordinates", () => {

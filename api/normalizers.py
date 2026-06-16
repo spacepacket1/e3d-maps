@@ -4,6 +4,8 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 
+from schemas.cross_chain_activity_state import CrossChainActivityState
+from schemas.maps_news_brief import MapsNewsBrief
 from schemas.navigation_signal import NavigationSignal
 from schemas.prediction_outcome import PredictionOutcome
 from schemas.route_prediction import RoutePrediction
@@ -104,6 +106,53 @@ def normalize_traffic_state_row(row: dict[str, Any]) -> TrafficState:
         "created_at": _parse_datetime(row["created_at"]),
     }
     return TrafficState.model_validate(payload)
+
+
+def normalize_maps_news_brief_row(row: dict[str, Any]) -> MapsNewsBrief:
+    payload = {
+        "id": row["id"],
+        "scope": row.get("scope") or "global",
+        "headline": row["headline"],
+        "summary": row["summary"],
+        "stance": row["stance"],
+        "supporting_signal_ids": _string_list(row.get("supporting_signal_ids")),
+        "supporting_story_ids": _string_list(row.get("supporting_story_ids")),
+        "supporting_thesis_ids": _string_list(row.get("supporting_thesis_ids")),
+        "tags": _string_list(row.get("tags")),
+        "created_by_agent": row.get("created_by_agent") or "maps_news_agent",
+        "model": row.get("model") or "",
+        "adapter": row.get("adapter") or "",
+        "schema_version": row.get("schema_version") or "",
+        "created_at": _parse_datetime(row["created_at"]),
+    }
+    return MapsNewsBrief.model_validate(payload)
+
+
+def normalize_cross_chain_activity_state_row(row: dict[str, Any]) -> CrossChainActivityState:
+    payload = {
+        "id": row["id"],
+        "scope": row.get("scope") or "global",
+        "market_bias": row["market_bias"],
+        "top_routes": _json_array(row.get("top_routes_json", row.get("top_routes"))),
+        "active_hazards": _json_array(row.get("active_hazards_json", row.get("active_hazards"))),
+        "active_congestion": _json_array(
+            row.get("active_congestion_json", row.get("active_congestion"))
+        ),
+        "top_destinations": _json_array(
+            row.get("top_destinations_json", row.get("top_destinations"))
+        ),
+        "ethereum_outbound_routes": _json_array(
+            row.get("ethereum_outbound_routes_json", row.get("ethereum_outbound_routes"))
+        ),
+        "ethereum_inbound_routes": _json_array(
+            row.get("ethereum_inbound_routes_json", row.get("ethereum_inbound_routes"))
+        ),
+        "supporting_signal_ids": _string_list(row.get("supporting_signal_ids")),
+        "created_by_agent": row.get("created_by_agent") or "cross_chain_activity_assembler",
+        "schema_version": row.get("schema_version") or "",
+        "created_at": _parse_datetime(row["created_at"]),
+    }
+    return CrossChainActivityState.model_validate(payload)
 
 
 def normalize_signal_utility_score_row(row: dict[str, Any]) -> SignalUtilityScore:

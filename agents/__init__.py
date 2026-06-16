@@ -14,6 +14,7 @@ from agents.confidence_scoring_agent import ConfidenceAssessment, ConfidenceScor
 from agents.congestion_agent import CongestionAgent
 from agents.destination_prediction_agent import DestinationPredictionAgent
 from agents.liquidity_forecast_agent import LiquidityForecastAgent
+from agents.maps_news_agent import MapsNewsAgent, MapsNewsAgentResult
 from agents.narrative_acceleration_agent import NarrativeAccelerationAgent
 from agents.outcome_scoring_agent import OutcomeScoringAgent
 from agents.route_closure_agent import RouteClosureAgent
@@ -34,6 +35,8 @@ __all__ = [
     "CongestionAgent",
     "DestinationPredictionAgent",
     "LiquidityForecastAgent",
+    "MapsNewsAgent",
+    "MapsNewsAgentResult",
     "NarrativeAccelerationAgent",
     "OutcomeScoringAgent",
     "RouteClosureAgent",

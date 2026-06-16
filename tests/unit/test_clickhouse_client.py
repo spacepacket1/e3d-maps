@@ -7,10 +7,17 @@ import pytest
 from pydantic import ValidationError
 
 from clients.clickhouse_client import ClickHouseClient, ClickHouseClientError
+from schemas.cross_chain_activity_state import CrossChainActivityState
+from schemas.maps_news_brief import MapsNewsBrief
 from schemas.prediction_outcome import PredictionOutcome
 from schemas.signal_utility_score import SignalUtilityScore
 from schemas.traffic_state import TrafficState
-from tests.unit.payloads import navigation_signal_payload, route_prediction_payload
+from tests.unit.payloads import (
+    cross_chain_activity_state_payload,
+    maps_news_brief_payload,
+    navigation_signal_payload,
+    route_prediction_payload,
+)
 
 
 def traffic_state_payload(**overrides):
@@ -126,6 +133,37 @@ def test_insert_prediction_outcome_converts_boolean_to_uint8():
     printed = json.loads(output.getvalue())
     assert printed["rows"][0]["map_prediction_correct"] == 1
     assert printed["rows"][0]["schema_version"] == ""
+
+
+def test_insert_maps_news_brief_serializes_expected_shape():
+    output = io.StringIO()
+    client = ClickHouseClient(dry_run=True, output=output)
+
+    inserted = client.insert_maps_news_brief(MapsNewsBrief.model_validate(maps_news_brief_payload()))
+
+    assert inserted == 1
+    printed = json.loads(output.getvalue())
+    row = printed["rows"][0]
+    assert row["headline"].startswith("Ethereum stays active")
+    assert row["tags"] == ["ethereum", "congestion", "hazards_active"]
+    assert row["created_by_agent"] == "maps_news_agent"
+
+
+def test_insert_cross_chain_activity_state_serializes_nested_lists_to_json_strings():
+    output = io.StringIO()
+    client = ClickHouseClient(dry_run=True, output=output)
+
+    inserted = client.insert_cross_chain_activity_state(
+        CrossChainActivityState.model_validate(cross_chain_activity_state_payload())
+    )
+
+    assert inserted == 1
+    printed = json.loads(output.getvalue())
+    row = printed["rows"][0]
+    assert json.loads(row["top_routes_json"])[0]["normalized_destination"] == "base"
+    assert json.loads(row["active_hazards_json"])[0]["risk_level"] == "high"
+    assert json.loads(row["ethereum_inbound_routes_json"])[0]["normalized_destination"] == "eth_defi"
+    assert row["supporting_signal_ids"] == ["navsig_01J", "navsig_02J", "navsig_03J"]
 
 
 def test_update_navigation_signal_outcome_status_issues_mutation_query():

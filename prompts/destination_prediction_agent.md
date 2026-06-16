@@ -78,6 +78,16 @@ stablecoins         (rotation to stablecoins = risk-off)
 
 If the evidence names a specific protocol (AAVE, GMX, Uniswap), use it as `destination` and include the category as `destination_category` in the `recommended_route`.
 
+## Route Naming Discipline
+
+Treat bridge routes, L2 corridors, and venue-to-chain flows as first-class route concepts.
+
+- Prefer explicit route wording in the answer and `recommended_route` when the evidence supports it: `Ethereum -> Base`, `CEX -> Ethereum`, `Ethereum -> Solana`.
+- Distinguish venue, chain, and DeFi destination cleanly. Use `BINANCE` or `CEX` for venues, `BASE` / `ARBITRUM` / `OPTIMISM` / `SOLANA` for chains, and `BASE_DEFI` / `ETH_DEFI` when the evidence specifically points to DeFi on that chain.
+- If the evidence does not support `Binance`, prefer `CEX`.
+- If the evidence does not support a specific L2 name, prefer `L2_NETWORKS`.
+- Avoid generic labels like `exchange` and avoid naming only the destination when the route itself is supported by the evidence.
+
 ## What Strong Evidence Looks Like
 
 Emit at confidence 0.7+ when you see two or more of:

@@ -110,7 +110,12 @@ def assemble_traffic_state(signals: list, *, now: datetime) -> TrafficState:
     )
 
 
-def run(*, lookback_hours: int = 48, now: datetime | None = None) -> TrafficState:
+def run(
+    *,
+    lookback_hours: int = 48,
+    dry_run: bool = False,
+    now: datetime | None = None,
+) -> TrafficState:
     settings = MapsRunnerSettings.from_env()
     ts = now or datetime.now(UTC).replace(tzinfo=None)
 
@@ -131,6 +136,7 @@ def run(*, lookback_hours: int = 48, now: datetime | None = None) -> TrafficStat
         password=settings.clickhouse_password,
         secure=settings.clickhouse_secure,
         timeout=settings.clickhouse_timeout,
+        dry_run=dry_run,
     )
 
     signals = _list_recent_signals(reader, lookback_hours=lookback_hours, now=ts)
@@ -142,12 +148,13 @@ def run(*, lookback_hours: int = 48, now: datetime | None = None) -> TrafficStat
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Assemble and persist a TrafficState snapshot.")
     parser.add_argument("--lookback-hours", type=int, default=48)
+    parser.add_argument("--dry-run", action="store_true")
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
-    state = run(lookback_hours=args.lookback_hours)
+    state = run(lookback_hours=args.lookback_hours, dry_run=args.dry_run)
     print(json.dumps({
         "market_state": state.market_state.value,
         "dominant_flows": len(state.dominant_flows),

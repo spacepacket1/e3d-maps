@@ -27,6 +27,89 @@ test("getState returns null for a 404 response", async () => {
   assert.equal(state, null);
 });
 
+test("getNews returns null for a 404 response", async () => {
+  const client = createMapsApiClient({
+    fetchImpl: async (url) => {
+      assert.equal(url, "/api/maps/news");
+      return {
+        status: 404,
+        ok: false,
+        statusText: "Not Found",
+        json: async () => ({ status: "not_found" }),
+      };
+    },
+  });
+
+  const news = await client.getNews();
+  assert.equal(news, null);
+});
+
+test("getNews preserves the news payload when the endpoint is available", async () => {
+  const payload = {
+    headline: "Ethereum is active, but route quality is deteriorating",
+    summary: "Flows remain live across ETH DeFi and major venues.",
+    stance: "cautious",
+    tags: ["ethereum", "congestion"],
+    generated_at: "2026-06-16T13:52:17Z",
+  };
+  const client = createMapsApiClient({
+    fetchImpl: async (url) => {
+      assert.equal(url, "/api/maps/news");
+      return {
+        status: 200,
+        ok: true,
+        json: async () => ({ status: "ok", news: payload }),
+      };
+    },
+  });
+
+  const news = await client.getNews();
+  assert.deepEqual(news, payload);
+});
+
+test("getCrossChainActivity returns null for a 404 response", async () => {
+  const client = createMapsApiClient({
+    fetchImpl: async (url) => {
+      assert.equal(url, "/api/maps/cross-chain");
+      return {
+        status: 404,
+        ok: false,
+        statusText: "Not Found",
+        json: async () => ({ status: "not_found" }),
+      };
+    },
+  });
+
+  const activity = await client.getCrossChainActivity();
+  assert.equal(activity, null);
+});
+
+test("getCrossChainActivity preserves the activity payload when the endpoint is available", async () => {
+  const payload = {
+    market_bias: "risk_on",
+    top_routes: [{ normalized_origin: "ethereum", normalized_destination: "solana", signal_strength: 0.82 }],
+    active_hazards: [],
+    active_congestion: [],
+    top_destinations: [],
+    ethereum_outbound_routes: [],
+    ethereum_inbound_routes: [],
+    created_at: "2026-06-16T13:52:17Z",
+  };
+  const client = createMapsApiClient({
+    fetchImpl: async (url) => {
+      assert.equal(url, "/api/maps/cross-chain");
+      return {
+        status: 200,
+        ok: true,
+        json: async () => ({ status: "ok", cross_chain: payload }),
+      };
+    },
+  });
+
+  const activity = await client.getCrossChainActivity();
+  assert.deepEqual(activity, payload);
+});
+
 test("listSignals preserves response payloads", async () => {
   const client = createMapsApiClient({
     fetchImpl: async (url) => {

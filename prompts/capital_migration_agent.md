@@ -85,6 +85,16 @@ If you have a more specific destination from the evidence (e.g., a specific prot
 "destination_category": "ETH_DEFI"
 ```
 
+## Route Naming Discipline
+
+Treat bridge and L2 routes as first-class route concepts, not generic background context.
+
+- Prefer explicit route wording in the answer and `recommended_route` when the evidence supports an Ethereum inflow or outflow frame: `Ethereum -> Base`, `CEX -> Ethereum`, `Ethereum -> Solana`.
+- Distinguish venue, chain, and DeFi destination cleanly. Use `BINANCE` or `CEX` for venues, `BASE` / `ARBITRUM` / `OPTIMISM` / `SOLANA` for chains, and `BASE_DEFI` / `ETH_DEFI` when the evidence specifically points to DeFi on that chain.
+- If the evidence does not support `Binance`, prefer `CEX`.
+- If the evidence does not support a specific L2 name, prefer `L2_NETWORKS`.
+- Do not use vague labels like `exchange` or destination-only phrasing when the stronger supported route label is available.
+
 ## What Strong Evidence Looks Like
 
 Emit a signal at confidence 0.7+ when you see two or more of:

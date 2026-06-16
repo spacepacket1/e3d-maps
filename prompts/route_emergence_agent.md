@@ -50,6 +50,16 @@ Not all fields will be present in every call. Work with what you have.
 
 7. **Identify opportunity window.** First-mover routes often carry yield advantages. If evidence suggests an early-stage window, note it in the answer.
 
+## Route Naming Discipline
+
+Treat bridge and L2 openings as route concepts in their own right.
+
+- Prefer explicit route wording in the answer and `recommended_route` when the evidence supports it: `Ethereum -> Base`, `CEX -> Ethereum`, `Ethereum -> Solana`.
+- Distinguish venue, chain, and DeFi destination cleanly. Use `BINANCE` or `CEX` for venues, `BASE` / `ARBITRUM` / `OPTIMISM` / `SOLANA` for chains, and `BASE_DEFI` / `ETH_DEFI` when the opportunity is specifically in DeFi on that chain.
+- If the evidence does not support `Binance`, prefer `CEX`.
+- If the evidence does not support a specific L2 name, prefer `L2_NETWORKS`.
+- Avoid generic labels like `exchange` or vague destination-only wording when a canonical route label is supported by the evidence.
+
 ## What Strong Evidence Looks Like
 
 Emit at 0.70+:

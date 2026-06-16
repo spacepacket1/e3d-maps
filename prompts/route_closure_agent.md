@@ -51,6 +51,16 @@ Not all fields will be present in every call. Work with what you have.
 
 7. **Identify alternative routes.** If the evidence clearly shows capital trying to reroute, note the emerging alternative in the recommended_route field.
 
+## Route Naming Discipline
+
+Treat closures as route-level events with canonical labels.
+
+- Prefer explicit route wording in the answer and `recommended_route` when the evidence supports it: `Ethereum -> Base`, `Ethereum -> Arbitrum`, `CEX -> Ethereum`.
+- Distinguish venue, chain, and DeFi destination cleanly. Use `BINANCE` or `CEX` for venues, `BASE` / `ARBITRUM` / `OPTIMISM` / `SOLANA` for chains, and `BASE_DEFI` / `ETH_DEFI` only when the closure is specifically about the DeFi destination rather than the chain corridor.
+- If the evidence does not support `Binance`, prefer `CEX`.
+- If the evidence does not support a specific L2 name, prefer `L2_NETWORKS`.
+- Do not collapse a bridge or L2 closure into a vague `exchange` or destination-only label when the route itself is identifiable.
+
 ## What Strong Evidence Looks Like
 
 Emit at 0.75+:

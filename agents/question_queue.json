@@ -1,19 +1,19 @@
 [
   {
     "agent": "capital_migration_agent",
-    "question": "Where is capital likely moving over the next 24 hours?",
+    "question": "Is capital rotating from Binance-linked exchange balances into Solana or Base over the next 24 hours?",
     "time_horizon_hours": 24,
     "enabled": true
   },
   {
     "agent": "capital_migration_agent",
-    "question": "Is capital rotating from ETH DeFi toward Solana or L2 ecosystems over the next 24 hours?",
+    "question": "Is capital leaving Ethereum for Base, Arbitrum, Optimism, Solana, or Binance-linked routes over the next 24 hours?",
     "time_horizon_hours": 24,
     "enabled": true
   },
   {
     "agent": "capital_migration_agent",
-    "question": "Is capital moving into or out of perpetuals and derivatives trading venues over the next 24 hours?",
+    "question": "Is capital moving into Ethereum from CEX or cross-chain bridge routes over the next 24 hours?",
     "time_horizon_hours": 24,
     "enabled": true
   },
@@ -25,7 +25,7 @@
   },
   {
     "agent": "destination_prediction_agent",
-    "question": "Which destinations are gaining probability?",
+    "question": "Are Base, Arbitrum, or Optimism becoming more attractive capital destinations over the next 24 hours?",
     "time_horizon_hours": 24,
     "enabled": true
   },
@@ -67,7 +67,7 @@
   },
   {
     "agent": "route_hazard_agent",
-    "question": "Which capital routes are becoming unsafe?",
+    "question": "Are any bridge routes into Solana or major L2s becoming hazardous or congested right now?",
     "time_horizon_hours": 24,
     "enabled": true
   },

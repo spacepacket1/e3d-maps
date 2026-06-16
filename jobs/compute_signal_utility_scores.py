@@ -10,13 +10,22 @@ from typing import Any, Iterable, Sequence
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from api.normalizers import normalize_navigation_signal_row, normalize_route_prediction_row
+from api.normalizers import (
+    normalize_cross_chain_activity_state_row,
+    normalize_maps_news_brief_row,
+    normalize_navigation_signal_row,
+    normalize_route_prediction_row,
+    normalize_traffic_state_row,
+)
+from schemas.cross_chain_activity_state import CrossChainActivityState
+from schemas.maps_news_brief import MapsNewsBrief
 from clients.clickhouse_client import ClickHouseClient
 from clients.trading_outcome_client import TradingOutcomeClient
 from schemas.navigation_signal import NavigationSignal
 from schemas.route_prediction import RoutePrediction
 from schemas.shared_enums import OutcomeStatus
 from schemas.signal_utility_score import SignalUtilityScore
+from schemas.traffic_state import TrafficState
 from settings import MapsRunnerSettings
 
 
@@ -72,6 +81,30 @@ class ClickHouseReadClient:
             )
         )
         return [normalize_route_prediction_row(row) for row in rows]
+
+    def get_latest_traffic_state(self) -> TrafficState | None:
+        rows = self.select(
+            "SELECT * FROM TrafficStates ORDER BY created_at DESC, id DESC LIMIT 1 FORMAT JSONEachRow"
+        )
+        if not rows:
+            return None
+        return normalize_traffic_state_row(rows[0])
+
+    def get_latest_cross_chain_activity_state(self) -> CrossChainActivityState | None:
+        rows = self.select(
+            "SELECT * FROM CrossChainActivityStates ORDER BY created_at DESC, id DESC LIMIT 1 FORMAT JSONEachRow"
+        )
+        if not rows:
+            return None
+        return normalize_cross_chain_activity_state_row(rows[0])
+
+    def get_latest_maps_news_brief(self) -> MapsNewsBrief | None:
+        rows = self.select(
+            "SELECT * FROM MapsNewsBriefs ORDER BY created_at DESC, id DESC LIMIT 1 FORMAT JSONEachRow"
+        )
+        if not rows:
+            return None
+        return normalize_maps_news_brief_row(rows[0])
 
     def select(self, query: str) -> list[dict[str, Any]]:
         request = self._build_request(query)

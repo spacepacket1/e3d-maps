@@ -8,7 +8,9 @@ from typing import Any, Iterable, TextIO
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from schemas.cross_chain_activity_state import CrossChainActivityState
 from schemas.flow_graph import FlowEdge, FlowGraphSnapshot
+from schemas.maps_news_brief import MapsNewsBrief
 from schemas.navigation_signal import NavigationSignal
 from schemas.prediction_outcome import PredictionOutcome
 from schemas.route_prediction import RoutePrediction
@@ -141,6 +143,37 @@ class ClickHouseClient:
             records=records,
             schema_model=PredictionOutcome,
             serializer=self._serialize_prediction_outcome,
+        )
+
+    def insert_maps_news_brief(self, record: MapsNewsBrief | dict[str, Any]) -> int:
+        return self.insert_maps_news_briefs([record])
+
+    def insert_maps_news_briefs(
+        self,
+        records: Iterable[MapsNewsBrief | dict[str, Any]],
+    ) -> int:
+        return self._insert_models(
+            table_name="MapsNewsBriefs",
+            records=records,
+            schema_model=MapsNewsBrief,
+            serializer=self._serialize_maps_news_brief,
+        )
+
+    def insert_cross_chain_activity_state(
+        self,
+        record: CrossChainActivityState | dict[str, Any],
+    ) -> int:
+        return self.insert_cross_chain_activity_states([record])
+
+    def insert_cross_chain_activity_states(
+        self,
+        records: Iterable[CrossChainActivityState | dict[str, Any]],
+    ) -> int:
+        return self._insert_models(
+            table_name="CrossChainActivityStates",
+            records=records,
+            schema_model=CrossChainActivityState,
+            serializer=self._serialize_cross_chain_activity_state,
         )
 
     def insert_signal_utility_score(
@@ -377,6 +410,47 @@ class ClickHouseClient:
             "consumer_exposure": record.consumer_exposure,
             "exogenous_accuracy": record.exogenous_accuracy,
             "induced_accuracy": record.induced_accuracy,
+        }
+
+    @staticmethod
+    def _serialize_maps_news_brief(record: MapsNewsBrief) -> dict[str, Any]:
+        return {
+            "id": record.id,
+            "scope": record.scope,
+            "headline": record.headline,
+            "summary": record.summary,
+            "stance": record.stance,
+            "supporting_signal_ids": record.supporting_signal_ids,
+            "supporting_story_ids": record.supporting_story_ids,
+            "supporting_thesis_ids": record.supporting_thesis_ids,
+            "tags": record.tags,
+            "created_by_agent": record.created_by_agent,
+            "model": record.model,
+            "adapter": record.adapter,
+            "schema_version": record.schema_version,
+            "created_at": ClickHouseClient._format_datetime(record.created_at),
+        }
+
+    @staticmethod
+    def _serialize_cross_chain_activity_state(record: CrossChainActivityState) -> dict[str, Any]:
+        return {
+            "id": record.id,
+            "scope": record.scope,
+            "market_bias": record.market_bias,
+            "top_routes_json": ClickHouseClient._json_string(record.top_routes),
+            "active_hazards_json": ClickHouseClient._json_string(record.active_hazards),
+            "active_congestion_json": ClickHouseClient._json_string(record.active_congestion),
+            "top_destinations_json": ClickHouseClient._json_string(record.top_destinations),
+            "ethereum_outbound_routes_json": ClickHouseClient._json_string(
+                record.ethereum_outbound_routes
+            ),
+            "ethereum_inbound_routes_json": ClickHouseClient._json_string(
+                record.ethereum_inbound_routes
+            ),
+            "supporting_signal_ids": record.supporting_signal_ids,
+            "created_by_agent": record.created_by_agent,
+            "schema_version": record.schema_version,
+            "created_at": ClickHouseClient._format_datetime(record.created_at),
         }
 
     @staticmethod

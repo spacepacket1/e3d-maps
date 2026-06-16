@@ -10,6 +10,11 @@
   --warning: #8d5e12;
   --danger: #9c3434;
   --shadow: 0 24px 60px rgba(69, 54, 38, 0.08);
+  --news-risk-on: #0a7f68;
+  --news-risk-off: #7a2d2d;
+  --news-cautious: #8d5e12;
+  --news-crowded: #7d4f22;
+  --news-neutral: #355d7a;
 }
 
 * {
@@ -512,6 +517,177 @@ button {
   color: var(--muted);
   font-size: 0.875rem;
   pointer-events: none;
+}
+
+.maps-news-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 28px 28px 26px;
+  border-radius: 28px;
+  border: 1px solid var(--panel-border);
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.55), transparent 30%),
+    linear-gradient(135deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.2) 100%),
+    var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.maps-news-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 6px;
+  background: var(--news-accent, var(--accent));
+}
+
+.maps-news-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 54rem;
+}
+
+.maps-news-hero h3 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.35rem);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+}
+
+.maps-news-summary {
+  margin: 14px 0 0;
+  max-width: 48rem;
+  color: rgba(32, 24, 19, 0.86);
+  font-size: 1.02rem;
+  line-height: 1.7;
+}
+
+.maps-news-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  color: var(--muted);
+  font-family: "Menlo", "Monaco", monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.maps-news-timestamp.is-stale {
+  color: var(--warning);
+}
+
+.maps-news-meta-sep {
+  opacity: 0.5;
+}
+
+.maps-news-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.stance-risk-on {
+  --news-accent: var(--news-risk-on);
+  background:
+    radial-gradient(circle at top right, rgba(10, 127, 104, 0.22), transparent 28%),
+    linear-gradient(135deg, rgba(10,127,104,0.10) 0%, rgba(255,255,255,0.22) 100%),
+    var(--panel);
+}
+
+.stance-risk-off {
+  --news-accent: var(--news-risk-off);
+  background:
+    radial-gradient(circle at top right, rgba(156, 52, 52, 0.18), transparent 28%),
+    linear-gradient(135deg, rgba(156,52,52,0.09) 0%, rgba(255,255,255,0.22) 100%),
+    var(--panel);
+}
+
+.stance-cautious {
+  --news-accent: var(--news-cautious);
+  background:
+    radial-gradient(circle at top right, rgba(141, 94, 18, 0.18), transparent 28%),
+    linear-gradient(135deg, rgba(141,94,18,0.09) 0%, rgba(255,255,255,0.22) 100%),
+    var(--panel);
+}
+
+.stance-crowded {
+  --news-accent: var(--news-crowded);
+  background:
+    radial-gradient(circle at top right, rgba(125, 79, 34, 0.16), transparent 28%),
+    linear-gradient(135deg, rgba(125,79,34,0.08) 0%, rgba(255,255,255,0.22) 100%),
+    var(--panel);
+}
+
+.stance-neutral {
+  --news-accent: var(--news-neutral);
+  background:
+    radial-gradient(circle at top right, rgba(53, 93, 122, 0.14), transparent 28%),
+    linear-gradient(135deg, rgba(53,93,122,0.08) 0%, rgba(255,255,255,0.22) 100%),
+    var(--panel);
+}
+
+.cross-chain-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.cross-chain-panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+}
+
+.cross-chain-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.cross-chain-section {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.46);
+  border: 1px solid rgba(61, 45, 30, 0.08);
+}
+
+.cross-chain-list {
+  display: grid;
+  gap: 10px;
+}
+
+.cross-chain-item {
+  display: grid;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(61, 45, 30, 0.08);
+}
+
+.cross-chain-item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.cross-chain-item-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.cross-chain-item strong {
+  line-height: 1.35;
+}
+
+.cross-chain-item p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
 }
 
 .api-intro {
@@ -1047,6 +1223,19 @@ button {
 @media (max-width: 720px) {
   .app-shell {
     padding: 20px 14px 40px;
+  }
+
+  .maps-news-hero {
+    padding: 22px 20px 20px;
+  }
+
+  .maps-news-meta {
+    flex-wrap: wrap;
+  }
+
+  .cross-chain-panel-header,
+  .cross-chain-item-header {
+    flex-direction: column;
   }
 
   .rec-preview-panel {

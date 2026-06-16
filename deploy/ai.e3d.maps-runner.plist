@@ -8,10 +8,9 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/opt/homebrew/bin/python3</string>
-        <string>-m</string>
-        <string>agents.scheduler</string>
-        <string>--loop</string>
+        <string>/bin/zsh</string>
+        <string>-lc</string>
+        <string>set -a; if [ -f /Users/mini/e3d-maps/deploy/ai.e3d.maps-runner.env ]; then source /Users/mini/e3d-maps/deploy/ai.e3d.maps-runner.env; elif [ -f /Users/mini/e3d-maps/.env ]; then source /Users/mini/e3d-maps/.env; fi; exec /opt/homebrew/bin/python3 -m agents.scheduler --loop</string>
     </array>
 
     <key>WorkingDirectory</key>
@@ -19,52 +18,8 @@
 
     <key>EnvironmentVariables</key>
     <dict>
-        <!-- Qwen (local) — dedicated 7B instance on :5051 (base; Maps adapter once data exists) -->
-        <key>LLM_BASE_URL</key>
-        <string>http://127.0.0.1:5051</string>
-        <key>LLM_MODEL</key>
-        <string>mlx-community/Qwen2.5-7B-Instruct-4bit</string>
-
-        <!-- ClickHouse (remote) -->
-        <key>CLICKHOUSE_HOST</key>
-        <string>3.131.8.46</string>
-        <key>CLICKHOUSE_PORT</key>
-        <string>8123</string>
-        <key>CLICKHOUSE_DATABASE</key>
-        <string>default</string>
-        <key>CLICKHOUSE_USERNAME</key>
-        <string>admin</string>
-        <key>CLICKHOUSE_PASSWORD</key>
-        <string>spider8Fly1!</string>
-        <key>CLICKHOUSE_SECURE</key>
-        <string>false</string>
-
-        <!-- Adapter — empty path = no X-Adapter-Path header sent to Qwen -->
-        <key>MAPS_ADAPTER_PATH</key>
-        <string></string>
-        <key>MAPS_ADAPTER_NAME</key>
-        <string>base-v0</string>
-        <key>MAPS_ENABLE_ADAPTER_LOADING</key>
-        <string>false</string>
-
-        <!-- Cadence -->
-        <key>MAPS_RUNNER_INTERVAL_SECONDS</key>
-        <string>300</string>
-        <key>MAPS_SCORING_INTERVAL_SECONDS</key>
-        <string>1800</string>
-        <key>MAPS_UTILITY_INTERVAL_SECONDS</key>
-        <string>3600</string>
-        <key>MAPS_EXPORT_INTERVAL_SECONDS</key>
-        <string>86400</string>
-        <key>MAPS_SCHEDULER_TICK_SECONDS</key>
-        <string>60</string>
-
-        <key>QWEN_TIMEOUT</key>
-        <string>300</string>
         <key>PYTHONUNBUFFERED</key>
         <string>1</string>
-        <key>MAPS_ENV</key>
-        <string>production</string>
     </dict>
 
     <!-- Restart automatically if the process exits -->

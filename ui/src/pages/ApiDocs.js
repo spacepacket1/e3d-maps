@@ -12,6 +12,20 @@ const ENDPOINTS = [
     response: `{\n  "status": "ok",\n  "state": {\n    "id": "ts_01j...",\n    "scope": "global",\n    "market_state": "risk_on",\n    "dominant_flows": [\n      { "origin": "stablecoins", "destination": "ETH", "strength": "strong" }\n    ],\n    "congestion_zones": ["DEX aggregators", "L2 bridges"],\n    "hazards": ["exchange_outflow_spike"],\n    "top_destinations": [\n      { "destination": "ETH", "confidence": 0.84 }\n    ],\n    "created_at": "2026-06-09T16:00:00Z"\n  }\n}`,
   },
   {
+    path: "/api/maps/news",
+    description: "Returns the latest MapsNewsBrief — a short editorial read of current market conditions derived from the stored Maps artifact. A 404 not_found means the artifact has not been generated yet and should be treated as an empty state.",
+    params: [],
+    example: `curl ${BASE}/api/maps/news`,
+    response: `{\n  "status": "ok",\n  "news": {\n    "headline": "Ethereum is active, but route quality is deteriorating",\n    "summary": "Flows remain live across ETH DeFi and major venues, but congestion and route closures suggest a crowded environment with rising execution risk.",\n    "stance": "cautious",\n    "tags": ["ethereum", "congestion"],\n    "generated_at": "2026-06-16T13:52:17Z"\n  }\n}`,
+  },
+  {
+    path: "/api/maps/cross-chain",
+    description: "Returns the latest CrossChainActivityState — the structured cross-chain, bridge, L2, and venue snapshot used by the homepage and downstream agents. A 404 not_found means the artifact has not been generated yet and should be treated as an empty state.",
+    params: [],
+    example: `curl ${BASE}/api/maps/cross-chain`,
+    response: `{\n  "status": "ok",\n  "cross_chain": {\n    "market_bias": "neutral",\n    "top_routes": [],\n    "active_hazards": [],\n    "active_congestion": [],\n    "top_destinations": [],\n    "ethereum_outbound_routes": [],\n    "ethereum_inbound_routes": [],\n    "created_at": "2026-06-16T13:52:17Z"\n  }\n}`,
+  },
+  {
     path: "/api/maps/signals",
     description: "List NavigationSignals with optional filters. Signals are the core output of Maps agents — each answers a navigation question with confidence, risk level, and a recommended action.",
     params: [
@@ -163,6 +177,17 @@ export function ApiDocsPage() {
         " for situational awareness and ",
         el("code", null, "/api/maps/signals"),
         " for actionable signals. High-confidence signals (min_confidence=0.8) are the primary inputs for trading and treasury decisions."
+      ),
+      el("p", { style: { marginTop: "12px" } },
+        "Deployment requirement: serve ",
+        el("code", null, "/api/maps/news"),
+        " and ",
+        el("code", null, "/api/maps/cross-chain"),
+        " with ",
+        el("code", null, "Cache-Control: max-age=300"),
+        " at the outer HTTP layer. These route handlers return JSON bodies only; caching is not expressed inside ",
+        el("code", null, "RouteResponse"),
+        "."
       )
     ),
     ...ENDPOINTS.map((ep) => el(Endpoint, { key: ep.path, ...ep }))

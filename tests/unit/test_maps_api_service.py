@@ -5,8 +5,10 @@ import json
 from api.maps_routes import (
     get_maps_calibration,
     get_maps_congestion,
+    get_maps_cross_chain,
     get_maps_destinations,
     get_maps_hazards,
+    get_maps_news,
     get_maps_predictions,
     get_maps_signal,
     get_maps_signals,
@@ -15,6 +17,8 @@ from api.maps_routes import (
 from api.story_types_routes import get_story_type, get_story_types
 from services.maps_api_service import MapsAPIService
 from tests.unit.payloads import (
+    cross_chain_activity_state_payload,
+    maps_news_brief_payload,
     navigation_signal_payload,
     route_prediction_payload,
     story_type_definition_payload,
@@ -113,6 +117,45 @@ def _story_type_row(**overrides):
     }
 
 
+def _maps_news_brief_row(**overrides):
+    payload = maps_news_brief_payload(**overrides)
+    return {
+        "id": payload["id"],
+        "scope": payload.get("scope", "global"),
+        "headline": payload["headline"],
+        "summary": payload["summary"],
+        "stance": payload["stance"],
+        "supporting_signal_ids": payload["supporting_signal_ids"],
+        "supporting_story_ids": payload["supporting_story_ids"],
+        "supporting_thesis_ids": payload["supporting_thesis_ids"],
+        "tags": payload["tags"],
+        "created_by_agent": payload.get("created_by_agent", "maps_news_agent"),
+        "model": payload["model"],
+        "adapter": payload["adapter"],
+        "schema_version": payload["schema_version"],
+        "created_at": "2026-06-16 13:52:17",
+    }
+
+
+def _cross_chain_activity_state_row(**overrides):
+    payload = cross_chain_activity_state_payload(**overrides)
+    return {
+        "id": payload["id"],
+        "scope": payload.get("scope", "global"),
+        "market_bias": payload["market_bias"],
+        "top_routes_json": json.dumps(payload["top_routes"]),
+        "active_hazards_json": json.dumps(payload["active_hazards"]),
+        "active_congestion_json": json.dumps(payload["active_congestion"]),
+        "top_destinations_json": json.dumps(payload["top_destinations"]),
+        "ethereum_outbound_routes_json": json.dumps(payload["ethereum_outbound_routes"]),
+        "ethereum_inbound_routes_json": json.dumps(payload["ethereum_inbound_routes"]),
+        "supporting_signal_ids": payload["supporting_signal_ids"],
+        "created_by_agent": payload.get("created_by_agent", "cross_chain_activity_assembler"),
+        "schema_version": payload["schema_version"],
+        "created_at": "2026-06-16 13:52:17",
+    }
+
+
 def test_get_latest_state_normalizes_clickhouse_json_columns():
     seen = {}
 
@@ -128,6 +171,42 @@ def test_get_latest_state_normalizes_clickhouse_json_columns():
     assert state is not None
     assert state.market_state == "transitioning"
     assert state.dominant_flows[0].destination == "ETH_DEFI"
+
+
+def test_get_latest_maps_news_brief_returns_latest_row():
+    seen = {}
+
+    def query_executor(body: bytes) -> bytes:
+        seen["sql"] = body.decode("utf-8")
+        return _serialize_json_each_row(_maps_news_brief_row())
+
+    service = MapsAPIService(query_executor=query_executor)
+
+    brief = service.get_latest_maps_news_brief()
+
+    assert "FROM MapsNewsBriefs" in seen["sql"]
+    assert "ORDER BY created_at DESC, id DESC" in seen["sql"]
+    assert brief is not None
+    assert brief.headline == "Ethereum stays active while bridge conditions start to look crowded"
+    assert brief.created_at.isoformat() == "2026-06-16T13:52:17+00:00"
+
+
+def test_get_latest_cross_chain_activity_state_returns_latest_row():
+    seen = {}
+
+    def query_executor(body: bytes) -> bytes:
+        seen["sql"] = body.decode("utf-8")
+        return _serialize_json_each_row(_cross_chain_activity_state_row())
+
+    service = MapsAPIService(query_executor=query_executor)
+
+    state = service.get_latest_cross_chain_activity_state()
+
+    assert "FROM CrossChainActivityStates" in seen["sql"]
+    assert "ORDER BY created_at DESC, id DESC" in seen["sql"]
+    assert state is not None
+    assert state.market_bias == "transitioning"
+    assert state.top_routes[0].normalized_destination == "base"
 
 
 def test_list_signals_applies_filters_and_pagination():
@@ -222,6 +301,25 @@ def test_route_handlers_return_expected_payload_shapes():
     assert state_response.status_code == 200
     assert state_response.body["state"]["scope"] == "global"
 
+    news_service = MapsAPIService(
+        query_executor=lambda body: _serialize_json_each_row(_maps_news_brief_row())
+    )
+    news_response = get_maps_news(news_service)
+    assert news_response.status_code == 200
+    assert news_response.body["news"]["stance"] == "crowded"
+    assert news_response.body["news"]["generated_at"] == "2026-06-16T13:52:17Z"
+    assert "id" not in news_response.body["news"]
+
+    cross_chain_service = MapsAPIService(
+        query_executor=lambda body: _serialize_json_each_row(_cross_chain_activity_state_row())
+    )
+    cross_chain_response = get_maps_cross_chain(cross_chain_service)
+    assert cross_chain_response.status_code == 200
+    assert cross_chain_response.body["cross_chain"]["market_bias"] == "transitioning"
+    assert cross_chain_response.body["cross_chain"]["top_routes"][0]["route_class"] == "bridge"
+    assert cross_chain_response.body["cross_chain"]["created_at"] == "2026-06-16T13:52:17Z"
+    assert "id" not in cross_chain_response.body["cross_chain"]
+
     signal_service = MapsAPIService(
         query_executor=lambda body: _serialize_json_each_row(
             _navigation_signal_row(id="navsig_02J"),
@@ -248,6 +346,24 @@ def test_route_handlers_return_expected_payload_shapes():
     story_type_response = get_story_type(story_type_service, "capital_migration")
     assert story_type_response.status_code == 200
     assert story_type_response.body["story_type"]["story_type"] == "capital_migration"
+
+
+def test_maps_news_route_returns_not_found_when_missing():
+    service = MapsAPIService(query_executor=lambda body: b"")
+
+    response = get_maps_news(service)
+
+    assert response.status_code == 404
+    assert response.body == {"status": "not_found", "error": "news_not_found"}
+
+
+def test_maps_cross_chain_route_returns_not_found_when_missing():
+    service = MapsAPIService(query_executor=lambda body: b"")
+
+    response = get_maps_cross_chain(service)
+
+    assert response.status_code == 404
+    assert response.body == {"status": "not_found", "error": "cross_chain_not_found"}
 
 
 def _calibration_query_executor(body: bytes) -> bytes:

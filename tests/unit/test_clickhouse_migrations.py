@@ -20,3 +20,14 @@ def test_phase_1_migration_uses_mergetree_and_insert_timestamps():
 
     assert migration_sql.count("ENGINE = MergeTree") == 6
     assert migration_sql.count("inserted_at DateTime DEFAULT now()") == 5
+
+
+def test_phase_1_maps_news_cross_chain_migration_matches_repo_conventions():
+    migration_sql = Path("db/migrations/0004_add_maps_news_and_cross_chain_tables.sql").read_text()
+
+    assert "CREATE TABLE IF NOT EXISTS MapsNewsBriefs" in migration_sql
+    assert "CREATE TABLE IF NOT EXISTS CrossChainActivityStates" in migration_sql
+    assert "top_routes_json" in migration_sql
+    assert "active_hazards_json" in migration_sql
+    assert migration_sql.count("ENGINE = MergeTree") == 2
+    assert migration_sql.count("inserted_at") == 2

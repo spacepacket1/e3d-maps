@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from settings import MapsRuntimeSettings
+from settings import MapsRunnerSettings, MapsRuntimeSettings
 
 
 def test_runtime_settings_use_existing_defaults_and_env_fallbacks():
@@ -54,3 +54,15 @@ def test_runtime_settings_prefer_explicit_adapter_env_values():
     assert settings.maps_adapter_name == "maps-v0.1"
     assert settings.maps_adapter_path == "/models/maps-v0.1"
     assert settings.maps_enable_adapter_loading is True
+
+
+def test_runner_settings_include_phase4_intervals():
+    settings = MapsRunnerSettings.from_env(
+        {
+            "MAPS_CROSS_CHAIN_ACTIVITY_INTERVAL_SECONDS": "420",
+            "MAPS_NEWS_INTERVAL_SECONDS": "180",
+        }
+    )
+
+    assert settings.cross_chain_activity_interval_seconds == 420
+    assert settings.maps_news_interval_seconds == 180

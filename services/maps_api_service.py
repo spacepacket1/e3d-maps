@@ -8,11 +8,15 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from api.normalizers import (
+    normalize_cross_chain_activity_state_row,
+    normalize_maps_news_brief_row,
     normalize_navigation_signal_row,
     normalize_route_prediction_row,
     normalize_story_type_definition_row,
     normalize_traffic_state_row,
 )
+from schemas.cross_chain_activity_state import CrossChainActivityState
+from schemas.maps_news_brief import MapsNewsBrief
 from clients.clickhouse_client import ClickHouseClientError
 from schemas.navigation_signal import NavigationSignal
 from schemas.recommendation import Recommendation
@@ -67,6 +71,34 @@ class MapsAPIService:
         if not rows:
             return None
         return normalize_traffic_state_row(rows[0])
+
+    def get_latest_maps_news_brief(self) -> MapsNewsBrief | None:
+        rows = self._query_rows(
+            """
+            SELECT *
+            FROM MapsNewsBriefs
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            FORMAT JSONEachRow
+            """
+        )
+        if not rows:
+            return None
+        return normalize_maps_news_brief_row(rows[0])
+
+    def get_latest_cross_chain_activity_state(self) -> CrossChainActivityState | None:
+        rows = self._query_rows(
+            """
+            SELECT *
+            FROM CrossChainActivityStates
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            FORMAT JSONEachRow
+            """
+        )
+        if not rows:
+            return None
+        return normalize_cross_chain_activity_state_row(rows[0])
 
     def list_signals(
         self,

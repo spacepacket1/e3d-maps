@@ -130,6 +130,44 @@ def test_from_runner_and_jobs_includes_flow_graph():
     assert len(flow_graph_calls) == 1
 
 
+def test_from_runner_and_jobs_includes_phase4_jobs_in_order():
+    calls: list[str] = []
+
+    scheduler = MapsJobScheduler.from_runner_and_jobs(
+        runner_fn=lambda: calls.append("signals"),
+        traffic_state_fn=lambda: calls.append("traffic_state"),
+        cross_chain_activity_fn=lambda: calls.append("cross_chain"),
+        maps_news_fn=lambda: calls.append("maps_news"),
+    )
+
+    names = [j.name for j in scheduler.jobs]
+    assert names == [
+        "generate_navigation_signals",
+        "assemble_traffic_state",
+        "assemble_cross_chain_activity",
+        "generate_maps_news",
+    ]
+
+    result = scheduler.run_once()
+    assert result.jobs_run == 4
+    assert calls == ["signals", "traffic_state", "cross_chain", "maps_news"]
+
+
+def test_from_runner_and_jobs_phase4_intervals_are_configurable():
+    scheduler = MapsJobScheduler.from_runner_and_jobs(
+        runner_fn=lambda: None,
+        cross_chain_activity_fn=lambda: None,
+        maps_news_fn=lambda: None,
+        cross_chain_activity_interval=420,
+        maps_news_interval=180,
+    )
+
+    cross_chain_job = next(j for j in scheduler.jobs if j.name == "assemble_cross_chain_activity")
+    maps_news_job = next(j for j in scheduler.jobs if j.name == "generate_maps_news")
+    assert cross_chain_job.interval_seconds == 420
+    assert maps_news_job.interval_seconds == 180
+
+
 def test_from_runner_and_jobs_flow_graph_uses_configured_interval():
     scheduler = MapsJobScheduler.from_runner_and_jobs(
         runner_fn=lambda: None,

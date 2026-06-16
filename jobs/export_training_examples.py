@@ -114,6 +114,7 @@ def run(
     export_date: date | None = None,
     include_disputed: bool = False,
     min_scorer_agreement: float | None = None,
+    dry_run: bool = False,
 ) -> Path:
     settings = MapsRunnerSettings.from_env()
     clickhouse_reader = ClickHouseReadClient(
@@ -150,6 +151,8 @@ def run(
 
     target_date = export_date or _utcnow().date()
     destination = Path(output_path) if output_path is not None else _default_output_path(target_date)
+    if dry_run:
+        return destination
     return write_examples_jsonl(examples, destination)
 
 

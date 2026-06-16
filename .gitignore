@@ -9,6 +9,7 @@ build/
 .venv/
 venv/
 .env
+deploy/*.env
 *.log
 .DS_Store
 training/exports/*.jsonl

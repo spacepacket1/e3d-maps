@@ -28,6 +28,54 @@ def get_maps_state(service: MapsAPIService) -> RouteResponse:
     )
 
 
+def get_maps_news(service: MapsAPIService) -> RouteResponse:
+    news = service.get_latest_maps_news_brief()
+    if news is None:
+        return RouteResponse(status_code=404, body={"status": "not_found", "error": "news_not_found"})
+
+    payload = model_to_dict(news)
+    return RouteResponse(
+        status_code=200,
+        body={
+            "status": "ok",
+            "news": {
+                "headline": payload["headline"],
+                "summary": payload["summary"],
+                "stance": payload["stance"],
+                "tags": payload["tags"],
+                "generated_at": payload["created_at"],
+            },
+        },
+    )
+
+
+def get_maps_cross_chain(service: MapsAPIService) -> RouteResponse:
+    cross_chain = service.get_latest_cross_chain_activity_state()
+    if cross_chain is None:
+        return RouteResponse(
+            status_code=404,
+            body={"status": "not_found", "error": "cross_chain_not_found"},
+        )
+
+    payload = model_to_dict(cross_chain)
+    return RouteResponse(
+        status_code=200,
+        body={
+            "status": "ok",
+            "cross_chain": {
+                "market_bias": payload["market_bias"],
+                "top_routes": payload["top_routes"],
+                "active_hazards": payload["active_hazards"],
+                "active_congestion": payload["active_congestion"],
+                "top_destinations": payload["top_destinations"],
+                "ethereum_outbound_routes": payload["ethereum_outbound_routes"],
+                "ethereum_inbound_routes": payload["ethereum_inbound_routes"],
+                "created_at": payload["created_at"],
+            },
+        },
+    )
+
+
 def get_maps_signals(
     service: MapsAPIService,
     *,

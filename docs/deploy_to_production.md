@@ -219,8 +219,19 @@ curl -s https://maps.e3d.ai/api/story-types | python3 -m json.tool | head -10
 
 A launchd plist is included at `deploy/ai.e3d.maps-runner.plist`.
 
-The plist embeds the ClickHouse credentials and Qwen URL directly.
-Update those values if they change, then install:
+Create a local runner env file first:
+
+```bash
+cp deploy/ai.e3d.maps-runner.env.example deploy/ai.e3d.maps-runner.env
+```
+
+Edit `deploy/ai.e3d.maps-runner.env` and set the machine-specific values, including:
+- `QWEN_API_KEY` for OpenAI access
+- `E3D_API_KEY`
+- `CLICKHOUSE_*`
+
+The plist sources that local env file at startup, so no secrets need to live in the plist itself.
+Then install:
 
 ```bash
 # Install into user LaunchAgents (runs at login, no sudo needed)

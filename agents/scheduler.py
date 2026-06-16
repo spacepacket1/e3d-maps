@@ -39,6 +39,8 @@ class MapsJobScheduler:
       - score_pending_predictions:   every 30 minutes
       - compute_signal_utility_scores: every 60 minutes
       - export_training_examples:    every 24 hours
+      - assemble_cross_chain_activity: every 5 minutes
+      - generate_maps_news: every 5 minutes
 
     Use from_runner_and_jobs() to build a scheduler from Maps runner and
     job callables, or construct directly with a custom JobConfig list.
@@ -50,6 +52,8 @@ class MapsJobScheduler:
     DEFAULT_EXPORT_INTERVAL = 86400
     DEFAULT_FLOW_GRAPH_INTERVAL = 300
     DEFAULT_TRAFFIC_STATE_INTERVAL = 300
+    DEFAULT_CROSS_CHAIN_ACTIVITY_INTERVAL = 300
+    DEFAULT_MAPS_NEWS_INTERVAL = 300
     DEFAULT_TICK_SECONDS = 60
 
     def __init__(
@@ -99,12 +103,16 @@ class MapsJobScheduler:
         export_fn: Callable[[], None] | None = None,
         flow_graph_fn: Callable[[], None] | None = None,
         traffic_state_fn: Callable[[], None] | None = None,
+        cross_chain_activity_fn: Callable[[], None] | None = None,
+        maps_news_fn: Callable[[], None] | None = None,
         signals_interval: int = DEFAULT_SIGNALS_INTERVAL,
         scoring_interval: int = DEFAULT_SCORING_INTERVAL,
         utility_interval: int = DEFAULT_UTILITY_INTERVAL,
         export_interval: int = DEFAULT_EXPORT_INTERVAL,
         flow_graph_interval: int = DEFAULT_FLOW_GRAPH_INTERVAL,
         traffic_state_interval: int = DEFAULT_TRAFFIC_STATE_INTERVAL,
+        cross_chain_activity_interval: int = DEFAULT_CROSS_CHAIN_ACTIVITY_INTERVAL,
+        maps_news_interval: int = DEFAULT_MAPS_NEWS_INTERVAL,
         tick_seconds: int = DEFAULT_TICK_SECONDS,
         sleep_fn: Callable[[float], None] = time.sleep,
         now_fn: Callable[[], float] = time.time,
@@ -156,6 +164,22 @@ class MapsJobScheduler:
                     interval_seconds=traffic_state_interval,
                 )
             )
+        if cross_chain_activity_fn is not None:
+            jobs.append(
+                JobConfig(
+                    name="assemble_cross_chain_activity",
+                    run_fn=cross_chain_activity_fn,
+                    interval_seconds=cross_chain_activity_interval,
+                )
+            )
+        if maps_news_fn is not None:
+            jobs.append(
+                JobConfig(
+                    name="generate_maps_news",
+                    run_fn=maps_news_fn,
+                    interval_seconds=maps_news_interval,
+                )
+            )
         return cls(jobs=jobs, tick_seconds=tick_seconds, sleep_fn=sleep_fn, now_fn=now_fn)
 
 
@@ -176,6 +200,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     import jobs.export_training_examples as export_mod
     import jobs.assemble_flow_graph as flow_graph_mod
     import jobs.assemble_traffic_state as traffic_state_mod
+    import jobs.assemble_cross_chain_activity as cross_chain_mod
+    import jobs.generate_maps_news as maps_news_mod
     from agents.runner import MapsRunner
     from agents.qwen_orchestrator import QwenOrchestrator
     from settings import MapsRuntimeSettings, MapsRunnerSettings
@@ -197,15 +223,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         runner_fn=lambda: orchestrator.run_maps_cycle(dry_run=dry_run),
         scorer_fn=lambda: scorer_mod.run(dry_run=dry_run),
         utility_fn=lambda: utility_mod.run(dry_run=dry_run),
-        export_fn=lambda: export_mod.run(),
-        flow_graph_fn=lambda: flow_graph_mod.run(),
-        traffic_state_fn=lambda: traffic_state_mod.run(),
+        export_fn=lambda: export_mod.run(dry_run=dry_run),
+        flow_graph_fn=lambda: flow_graph_mod.run(dry_run=dry_run),
+        traffic_state_fn=lambda: traffic_state_mod.run(dry_run=dry_run),
+        cross_chain_activity_fn=lambda: cross_chain_mod.run(dry_run=dry_run),
+        maps_news_fn=lambda: maps_news_mod.run(dry_run=dry_run),
         signals_interval=runner_settings.run_interval_seconds,
         scoring_interval=runner_settings.scoring_interval_seconds,
         utility_interval=runner_settings.utility_interval_seconds,
         export_interval=runner_settings.export_interval_seconds,
         flow_graph_interval=runner_settings.flow_graph_interval_seconds,
         traffic_state_interval=runner_settings.traffic_state_interval_seconds,
+        cross_chain_activity_interval=runner_settings.cross_chain_activity_interval_seconds,
+        maps_news_interval=runner_settings.maps_news_interval_seconds,
         tick_seconds=runner_settings.scheduler_tick_seconds,
     )
 

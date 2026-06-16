@@ -11,9 +11,12 @@ import {
   strokeWidth,
 } from "../utils/flowGraph.js";
 
-export function FlowGraph({ signals = [], onNodeClick }) {
+export function FlowGraph({ signals = [], crossChainRoutes = [], onNodeClick }) {
   const [hovered, setHovered] = useState(null);
-  const edges = deriveEdges(Array.isArray(signals) ? signals : []);
+  const edges = deriveEdges(
+    Array.isArray(signals) ? signals : [],
+    Array.isArray(crossChainRoutes) ? crossChainRoutes : []
+  );
   const activeNodeIds = new Set(edges.flatMap((edge) => [edge.origin, edge.destination]));
 
   return html`
@@ -54,6 +57,7 @@ export function FlowGraph({ signals = [], onNodeClick }) {
                 stroke=${edgeColor(edge.risk_level)}
                 strokeWidth=${isHovered ? strokeWidth(edge.confidence) + 2 : strokeWidth(edge.confidence)}
                 strokeOpacity=${isHovered ? 0.9 : 0.55}
+                strokeDasharray=${edge.source === "cross_chain" ? "6 3" : null}
                 style=${{ pointerEvents: "none", transition: "stroke-opacity 0.15s" }}
                 markerEnd="url(#arrowhead)"
               />
@@ -67,7 +71,7 @@ export function FlowGraph({ signals = [], onNodeClick }) {
                       fill=${edgeColor(edge.risk_level)}
                       fontWeight="600"
                     >
-                      ${formatConfidence(edge.confidence)} · ${titleCaseLabel(edge.risk_level)} risk
+                      ${formatConfidence(edge.confidence)} · ${titleCaseLabel(edge.risk_level)} risk${edge.source === "cross_chain" ? " · cross-chain" : ""}
                     </text>
                   `
                 : null}

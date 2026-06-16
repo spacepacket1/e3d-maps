@@ -62,7 +62,12 @@ def _normalize_edge_row(row: dict) -> FlowEdge:
     )
 
 
-def run(*, lookback_hours: int = 48, now: datetime | None = None) -> tuple[FlowGraphSnapshot, list[FlowEdge]]:
+def run(
+    *,
+    lookback_hours: int = 48,
+    dry_run: bool = False,
+    now: datetime | None = None,
+) -> tuple[FlowGraphSnapshot, list[FlowEdge]]:
     settings = MapsRunnerSettings.from_env()
     ts = now or datetime.now(UTC).replace(tzinfo=None)
 
@@ -83,6 +88,7 @@ def run(*, lookback_hours: int = 48, now: datetime | None = None) -> tuple[FlowG
         password=settings.clickhouse_password,
         secure=settings.clickhouse_secure,
         timeout=settings.clickhouse_timeout,
+        dry_run=dry_run,
     )
 
     signals = _list_recent_signals(reader, lookback_hours=lookback_hours, now=ts)
@@ -102,12 +108,13 @@ def run(*, lookback_hours: int = 48, now: datetime | None = None) -> tuple[FlowG
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Assemble and persist a FlowGraph snapshot.")
     parser.add_argument("--lookback-hours", type=int, default=48)
+    parser.add_argument("--dry-run", action="store_true")
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
-    snapshot, edges = run(lookback_hours=args.lookback_hours)
+    snapshot, edges = run(lookback_hours=args.lookback_hours, dry_run=args.dry_run)
     active = [e for e in edges if e.edge_status.value != "closed"]
     print(json.dumps({
         "snapshot_id": snapshot.id,

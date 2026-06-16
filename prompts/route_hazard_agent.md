@@ -75,6 +75,16 @@ contract_risk               — smart contract vulnerability, pause, or known ex
 honeypot                    — token or protocol designed to prevent exits
 ```
 
+## Route Naming Discipline
+
+Treat bridge and L2 corridors as the route itself, not as a vague destination tag.
+
+- Prefer explicit route wording in the answer when the evidence supports it: `Ethereum -> Base`, `Ethereum -> Solana`, `CEX -> Ethereum`.
+- Distinguish venue, chain, and DeFi destination cleanly. Use `BINANCE` or `CEX` for venues, `BASE` / `ARBITRUM` / `OPTIMISM` / `SOLANA` for chains, and `BASE_DEFI` / `ETH_DEFI` only when the hazard is specifically about the DeFi destination rather than the chain route.
+- If the evidence does not support `Binance`, prefer `CEX`.
+- If the evidence does not support a specific L2 name, prefer `L2_NETWORKS`.
+- Avoid generic labels like `exchange` when the supported canonical route label is available.
+
 ## What Warrants route_closure
 
 Return `route_closure` when:

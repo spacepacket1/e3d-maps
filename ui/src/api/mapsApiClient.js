@@ -60,6 +60,14 @@ export function createMapsApiClient({ baseUrl = "", fetchImpl = globalThis.fetch
       const body = await request("/api/maps/state", { allowNotFound: true });
       return body?.state || null;
     },
+    async getNews() {
+      const body = await request("/api/maps/news", { allowNotFound: true });
+      return body?.news || null;
+    },
+    async getCrossChainActivity() {
+      const body = await request("/api/maps/cross-chain", { allowNotFound: true });
+      return body?.cross_chain || null;
+    },
     async listSignals(filters = {}) {
       const body = await request("/api/maps/signals", {
         query: {

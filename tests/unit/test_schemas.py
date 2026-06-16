@@ -6,7 +6,10 @@ from pydantic import ValidationError
 from schemas.navigation_signal import NavigationSignal
 from schemas.route_prediction import RoutePrediction
 from schemas.story_type_definition import StoryTypeDefinition
+from schemas import CrossChainActivityState, MapsNewsBrief
 from tests.unit.payloads import (
+    cross_chain_activity_state_payload,
+    maps_news_brief_payload,
     navigation_signal_payload,
     route_prediction_payload,
     story_type_definition_payload,
@@ -88,3 +91,42 @@ def test_story_type_definition_can_allow_unknown_related_signal_types():
         "capital_migration",
         "experimental_signal",
     ]
+
+
+def test_maps_news_brief_accepts_valid_payload_and_defaults_scope():
+    brief = MapsNewsBrief.model_validate(maps_news_brief_payload(scope="global"))
+    assert brief.scope == "global"
+    assert brief.created_by_agent == "maps_news_agent"
+
+
+def test_maps_news_brief_rejects_empty_headline():
+    with pytest.raises(ValidationError):
+        MapsNewsBrief.model_validate(maps_news_brief_payload(headline="   "))
+
+
+def test_maps_news_brief_rejects_short_headline_and_multi_paragraph_summary():
+    with pytest.raises(ValidationError):
+        MapsNewsBrief.model_validate(
+            maps_news_brief_payload(
+                summary=(
+                    "Flows remain active across the strongest routes and the read is still coherent enough "
+                    "to pass the minimum length requirement for a single summary paragraph.\n\n"
+                    "A second paragraph should fail validation."
+                )
+            )
+        )
+
+
+def test_cross_chain_activity_state_accepts_valid_payload_and_defaults_scope():
+    state = CrossChainActivityState.model_validate(cross_chain_activity_state_payload())
+    assert state.scope == "global"
+    assert state.created_by_agent == "cross_chain_activity_assembler"
+
+
+def test_cross_chain_activity_state_rejects_too_many_top_routes():
+    payload = cross_chain_activity_state_payload(
+        top_routes=[cross_chain_activity_state_payload()["top_routes"][0] for _ in range(7)]
+    )
+
+    with pytest.raises(ValidationError):
+        CrossChainActivityState.model_validate(payload)
