@@ -94,6 +94,17 @@ button {
   border-radius: 12px;
 }
 
+.app-logo-link {
+  display: inline-flex;
+  flex-shrink: 0;
+  border-radius: 12px;
+}
+
+.app-logo-link:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
 .header-links {
   display: flex;
   gap: 20px;
@@ -288,6 +299,13 @@ button {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
+.capital-summary-row {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .section-heading {
   display: flex;
   justify-content: space-between;
@@ -312,6 +330,36 @@ button {
 .detail-list p,
 .empty-copy {
   color: var(--muted);
+}
+
+.summary-value-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.summary-value-table td {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(61, 45, 30, 0.08);
+  vertical-align: top;
+}
+
+.summary-value-table tr:first-child td {
+  padding-top: 0;
+}
+
+.summary-value-table tr:last-child td {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.summary-value-table .summary-value {
+  width: 34%;
+  padding-left: 16px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .empty-copy,
@@ -1003,6 +1051,10 @@ button {
 
   .rec-preview-panel {
     grid-column: span 1;
+  }
+
+  .capital-summary-row {
+    grid-template-columns: 1fr;
   }
 
   .page-header {

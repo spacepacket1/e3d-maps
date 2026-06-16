@@ -8,7 +8,14 @@ export function Layout({ children, currentPath, navigate, counts = {} }) {
         <div className="app-hero">
           <div className="app-title-row">
             <div className="app-title-block">
-              <img src="/e3d_logo_200.png" alt="E3D" className="app-logo" width="48" height="48" />
+              <a
+                href="/"
+                className="app-logo-link"
+                aria-label="Go to Maps Home"
+                onClick=${(event) => handleNavigate(event, "/", navigate)}
+              >
+                <img src="/e3d_logo_200.png" alt="E3D" className="app-logo" width="48" height="48" />
+              </a>
               <div>
                 <p className="eyebrow">maps.e3d.ai</p>
                 <h1>E3D Maps</h1>

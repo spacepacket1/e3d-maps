@@ -44,7 +44,7 @@ export function FlowGraph({ signals = [], onNodeClick }) {
                 fill="none"
                 stroke="transparent"
                 strokeWidth="20"
-                style="cursor:pointer"
+                style=${{ cursor: "pointer" }}
                 onMouseEnter=${() => setHovered(edgeId)}
                 onMouseLeave=${() => setHovered(null)}
               />
@@ -54,7 +54,7 @@ export function FlowGraph({ signals = [], onNodeClick }) {
                 stroke=${edgeColor(edge.risk_level)}
                 strokeWidth=${isHovered ? strokeWidth(edge.confidence) + 2 : strokeWidth(edge.confidence)}
                 strokeOpacity=${isHovered ? 0.9 : 0.55}
-                style="pointer-events:none;transition:stroke-opacity 0.15s"
+                style=${{ pointerEvents: "none", transition: "stroke-opacity 0.15s" }}
                 markerEnd="url(#arrowhead)"
               />
               ${isHovered
@@ -82,7 +82,7 @@ export function FlowGraph({ signals = [], onNodeClick }) {
           return html`
             <g
               key=${id}
-              style=${`cursor:${isActive && onNodeClick ? "pointer" : "default"};opacity:${isActive ? 1 : 0.3}`}
+              style=${{ cursor: isActive && onNodeClick ? "pointer" : "default", opacity: isActive ? 1 : 0.3 }}
               onClick=${isActive && onNodeClick ? () => onNodeClick(id) : undefined}
             >
               <circle
