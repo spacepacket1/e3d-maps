@@ -301,7 +301,7 @@ button {
 .story-grid {
   display: grid;
   gap: 18px;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
 }
 
 .capital-summary-row {
@@ -548,7 +548,7 @@ button {
 
 .maps-news-hero h3 {
   margin: 0;
-  font-size: clamp(2rem, 4vw, 3.35rem);
+  font-size: clamp(1rem, 1.6vw, 1.35rem);
   line-height: 0.98;
   letter-spacing: -0.03em;
 }
@@ -643,7 +643,7 @@ button {
 .cross-chain-grid {
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .cross-chain-section {
@@ -658,6 +658,8 @@ button {
 .cross-chain-list {
   display: grid;
   gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  align-items: start;
 }
 
 .cross-chain-item {
@@ -665,6 +667,8 @@ button {
   gap: 6px;
   padding-bottom: 10px;
   border-bottom: 1px solid rgba(61, 45, 30, 0.08);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .cross-chain-item:last-child {
@@ -688,6 +692,7 @@ button {
   color: var(--muted);
   font-size: 0.9rem;
   line-height: 1.55;
+  overflow-wrap: break-word;
 }
 
 .api-intro {
@@ -1079,7 +1084,7 @@ button {
 }
 
 .rec-preview-panel {
-  grid-column: span 2;
+  grid-column: span 1;
 }
 
 .rec-preview-header {
