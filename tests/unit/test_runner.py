@@ -156,6 +156,77 @@ def test_runner_skips_disabled_questions_and_does_not_write_invalid_outputs():
     assert '"table": "NavigationSignals"' in output.getvalue()
 
 
+def test_runner_skips_duplicate_signals_within_dedup_window():
+    signal_payload = json.dumps(
+        {
+            "signal_type": "capital_migration",
+            "question": "Where is capital likely moving over the next 24 hours?",
+            "answer": "Capital is rotating into ETH DeFi.",
+            "origin": "stablecoins",
+            "destination": "ETH_DEFI",
+            "time_horizon_hours": 24,
+            "confidence": 0.75,
+            "risk_level": "medium",
+            "supporting_story_ids": ["story_123"],
+            "created_by_agent": "capital_migration_agent",
+            "model": "qwen",
+            "adapter": "base-v0",
+            "schema_version": "1.0",
+            "outcome_status": "pending",
+            "created_at": "2026-06-08T00:00:00Z",
+        }
+    )
+    qwen_client = StubQwenClient([signal_payload])
+    e3d_client = StubE3DClient(
+        {
+            "recent_stories": [{"id": "story_123", "summary": "signal"}],
+            "recent_theses": [],
+            "token_activity": [],
+            "exchange_flows": [],
+            "wallet_activity": [],
+            "prior_signals": [],
+            "market_state": {},
+        }
+    )
+    # Stub clickhouse that always reports the signal already exists
+    dedup_queries: list[str] = []
+
+    class DeduplicatingClickHouseClient(ClickHouseClient):
+        def recent_signal_exists(self, signal_type, origin, destination, *, within_hours=4):
+            dedup_queries.append(f"{signal_type}:{origin}:{destination}")
+            return True  # always a duplicate
+
+    output = io.StringIO()
+    clickhouse_client = DeduplicatingClickHouseClient(dry_run=True, output=output)
+    runner = MapsRunner(
+        runtime_settings=MapsRuntimeSettings(),
+        runner_settings=MapsRunnerSettings(),
+        qwen_client=qwen_client,
+        e3d_client=e3d_client,
+        clickhouse_client=clickhouse_client,
+        adapter_manager=AdapterManager(adapter_name="base-v0"),
+    )
+
+    result = runner._run_cycle(
+        queue=[
+            QueueQuestion(
+                agent="capital_migration_agent",
+                question="Where is capital likely moving over the next 24 hours?",
+                time_horizon_hours=24,
+                enabled=True,
+            ),
+        ],
+        dry_run=False,
+    )
+
+    assert result.asked_questions == 1
+    assert result.successful_questions == 1
+    assert result.written_navigation_signals == 0
+    assert len(dedup_queries) == 1
+    assert "capital_migration:stablecoins:ETH_DEFI" in dedup_queries[0]
+    assert '"table": "NavigationSignals"' not in output.getvalue()
+
+
 def test_runner_once_dry_run_completes_with_sample_fallbacks():
     runner = MapsRunner(
         runtime_settings=MapsRuntimeSettings(),
@@ -170,6 +241,8 @@ def test_runner_once_dry_run_completes_with_sample_fallbacks():
     result = runner.run_once(dry_run=True)
 
     assert result.asked_questions == 30
-    assert result.skipped_questions == 0
     assert result.invalid_questions == 0
-    assert result.written_navigation_signals == 30
+    # Some sample fallbacks have confidence < 0.5 or empty destination and are
+    # filtered by the quality gate (route_closure=0.0, liquidity_forecast=0.45,
+    # agent_swarm_formation=0.0) — skipped + written must sum to asked.
+    assert result.skipped_questions + result.written_navigation_signals == 30

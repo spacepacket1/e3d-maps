@@ -67,13 +67,20 @@ class MapsJobScheduler:
 
     def run_once(self) -> SchedulerResult:
         """Check all jobs and run any that are due. Returns after one tick."""
+        import sys
+        import traceback
         now = self._now_fn()
         ran = 0
         for job in self.jobs:
             if job.is_due(now):
-                job.run_fn()
-                job.mark_ran(now)
-                ran += 1
+                try:
+                    job.run_fn()
+                    job.mark_ran(now)
+                    ran += 1
+                except Exception:
+                    print(f"[scheduler] job {job.name!r} failed:", file=sys.stderr)
+                    traceback.print_exc(file=sys.stderr)
+                    job.mark_ran(now)
         return SchedulerResult(cycles=1, jobs_run=ran)
 
     def run_loop(self) -> None:

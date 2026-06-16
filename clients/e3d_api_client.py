@@ -8,11 +8,11 @@ from clients._base_api_client import BaseE3DReadClient, E3DAPIClientError
 
 class E3DAPIClient(BaseE3DReadClient):
     DEFAULT_STORIES_MAX_ITEMS = 20
-    DEFAULT_THESES_MAX_ITEMS = 10
+    DEFAULT_THESES_MAX_ITEMS = 20
     DEFAULT_WALLET_ACTIVITY_MAX_ITEMS = 10
     DEFAULT_TOKEN_ACTIVITY_MAX_ITEMS = 10
     DEFAULT_EXCHANGE_FLOWS_MAX_ITEMS = 10
-    DEFAULT_CONTEXT_TOKEN_BUDGET = 4_000
+    DEFAULT_CONTEXT_TOKEN_BUDGET = 20_000
 
     def __init__(
         self,
@@ -58,7 +58,7 @@ class E3DAPIClient(BaseE3DReadClient):
     def get_recent_theses(self, *, max_items: int = DEFAULT_THESES_MAX_ITEMS) -> list[dict[str, Any]]:
         payload = self._get_json(
             path=self.theses_path,
-            query={"limit": max_items},
+            query={"limit": max_items, "status": "all"},
             missing_ok=True,
         )
         return self._coerce_items(payload, max_items=max_items)

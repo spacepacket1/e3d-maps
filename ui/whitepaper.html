@@ -437,6 +437,10 @@
       <div class="signal-chip"><strong>narrative_acceleration</strong><span>Is the narrative gaining or losing velocity?</span></div>
       <div class="signal-chip"><strong>agent_swarm_formation</strong><span>Are unrelated agents converging?</span></div>
     </div>
+
+    <p>Diversity is engineered into every cycle. Rather than asking one generic question per agent, the system runs thirty targeted variants per cycle — each scoped to a specific sector: Solana ecosystems, Ethereum L2s, perpetuals, liquid staking protocols, bridges, and stablecoin venues. A capital migration agent asking "where is capital moving on Solana right now?" produces a fundamentally different investigation than the same agent asking "where is capital moving into liquid staking?" Thirty questions, thirty evidence paths, thirty distinct answers — the topology of a full market sweep, not a single headline.</p>
+
+    <p>Agents run on a frontier language model with a calibrated temperature setting that ensures identical context produces meaningfully different answers across the question queue. A navigation system that produces the same output for every question is not a navigator — it is a broken compass. Output diversity is a correctness property of the signal layer, not an aesthetic preference.</p>
   </section>
 
   <!-- ── 5. The Flow Graph ───────────────────────────────────────── -->
@@ -456,6 +460,35 @@
       <h4>Navigating the Graph</h4>
       <p><code>GET /api/maps/graph/around/ETH_DEFI</code> returns a live subgraph: what is flowing in, what is flowing out, what hazards are on adjacent edges, and which neighboring nodes are gaining momentum. This is the query a navigator actually runs — not "show me all signals" but "show me the terrain around my destination."</p>
       <p>The FlowGraph also unlocks second-derivative intelligence: edges that are strengthening, edges that are fading, and routes that have just opened or just closed. That is the <em>narrative_acceleration</em> signal — not just where capital is going, but whether it is accelerating or decelerating toward it.</p>
+    </div>
+
+    <p>Edge state is tracked across snapshots. Each time the FlowGraph assembler runs, it compares the current confidence of every (origin, destination) pair against the prior snapshot. An edge whose confidence has risen by more than ten percentage points is marked <strong>STRENGTHENING</strong>. One that has fallen is marked <strong>WEAKENING</strong>. An edge appearing for the first time is <strong>NEW</strong>. One that was present in the prior snapshot but has no supporting signals in the current window is explicitly marked <strong>CLOSED</strong> — not silently dropped. That closing event is itself a navigation signal: a route that was active yesterday and is absent today is almost never neutral. Consumers receive a complete change log, not just a current state.</p>
+
+    <p>Above the FlowGraph sits the <strong>TrafficState</strong> — a five-minute aggregate that synthesizes all signal types into a single market-wide summary: the plurality-vote market condition (risk-on, risk-off, transitioning, neutral), the top dominant flows by average confidence, the top capital destinations, active congestion zones, and priority hazard labels. TrafficState is the view from the helicopter; the FlowGraph is the turn-by-turn. Both are written to the database on every assembly cycle and served instantly to consumer agents through <code>/api/maps/state</code>.</p>
+  </section>
+
+  <!-- ── 5b. Signal Integrity ──────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">Signal Integrity</p>
+      <h2>Three Layers of Noise Elimination</h2>
+    </div>
+
+    <p>A navigation system that repeats the same finding on every cycle is worse than useless — it gives agents false confidence in a stale signal while consuming their attention budget. E3D Maps applies three independent integrity controls to ensure that every signal reaching a consumer represents a distinct, evidence-grounded finding.</p>
+
+    <div class="insight">
+      <h4>Write-Time Deduplication</h4>
+      <p>Before any NavigationSignal is written to the database, the system queries for an identical <code>(signal_type, origin, destination)</code> written in the last four hours. If one exists, the write is skipped. The signal is already on the map. A duplicate does not add information — it adds noise. This single control eliminated a 137× repeat pattern observed during early production runs, where the same capital migration finding was written on every cycle against unchanged context.</p>
+    </div>
+
+    <div class="insight">
+      <h4>Read-Time Deduplication</h4>
+      <p>All signal and route list queries served through the Maps API enforce at most one result per unique <code>(signal_type, destination)</code> pair at query time. Even if duplicates exist in the database, the API surface always presents a clean, non-redundant result set. Consumer agents never receive ten copies of the same finding ranked by recency.</p>
+    </div>
+
+    <div class="insight">
+      <h4>Empty Context Guard</h4>
+      <p>If the E3D evidence API returns context with no stories and no theses, the runner raises an error immediately rather than proceeding. An agent operating against an empty evidence base cannot navigate — it can only hallucinate. The guard enforces the principle that a Maps signal must be grounded in real market intelligence or not produced at all. A missing signal is an honest acknowledgment of uncertainty. A fabricated signal is a hazard.</p>
     </div>
   </section>
 

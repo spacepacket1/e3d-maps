@@ -174,3 +174,65 @@ def test_request_errors_are_wrapped():
 
     with pytest.raises(ClickHouseClientError):
         client.insert_prediction_outcome(PredictionOutcome.model_validate(prediction_outcome_payload()))
+
+
+def test_recent_signal_exists_returns_false_in_dry_run():
+    client = ClickHouseClient(dry_run=True, output=io.StringIO())
+    assert client.recent_signal_exists("capital_migration", "stablecoins", "ETH_DEFI") is False
+
+
+def test_recent_signal_exists_returns_true_when_count_nonzero():
+    def request_executor(body: bytes) -> bytes:
+        return b'{"cnt": 3}\n'
+
+    client = ClickHouseClient(request_executor=request_executor)
+    assert client.recent_signal_exists("capital_migration", "stablecoins", "ETH_DEFI") is True
+
+
+def test_recent_signal_exists_returns_false_when_count_zero():
+    def request_executor(body: bytes) -> bytes:
+        return b'{"cnt": 0}\n'
+
+    client = ClickHouseClient(request_executor=request_executor)
+    assert client.recent_signal_exists("capital_migration", "stablecoins", "ETH_DEFI") is False
+
+
+def test_recent_signal_exists_sends_correct_query():
+    captured = {}
+
+    def request_executor(body: bytes) -> bytes:
+        captured["query"] = body.decode("utf-8")
+        return b'{"cnt": 0}\n'
+
+    client = ClickHouseClient(request_executor=request_executor)
+    client.recent_signal_exists("route_hazard", "ETH_DEFI", "SOLANA_L2", within_hours=6)
+
+    query = captured["query"]
+    assert "signal_type = 'route_hazard'" in query
+    assert "origin = 'ETH_DEFI'" in query
+    assert "destination = 'SOLANA_L2'" in query
+    assert "INTERVAL 6 HOUR" in query
+
+
+def test_recent_signal_exists_returns_false_on_request_error():
+    from urllib.error import URLError
+
+    def request_executor(body: bytes) -> bytes:
+        raise URLError("connection refused")
+
+    client = ClickHouseClient(request_executor=request_executor)
+    assert client.recent_signal_exists("capital_migration", "stablecoins", "ETH_DEFI") is False
+
+
+def test_recent_signal_exists_escapes_single_quotes():
+    captured = {}
+
+    def request_executor(body: bytes) -> bytes:
+        captured["query"] = body.decode("utf-8")
+        return b'{"cnt": 0}\n'
+
+    client = ClickHouseClient(request_executor=request_executor)
+    client.recent_signal_exists("O'Brien", "a", "b")
+
+    # The single quote must be escaped so it can't terminate the string literal
+    assert "O\\'Brien" in captured["query"]

@@ -75,6 +75,7 @@ class MapsRunnerSettings:
     scheduler_tick_seconds: int = 60
     use_sample_context: bool = False
     use_sample_responses: bool = False
+    min_signal_confidence: float = 0.5
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> "MapsRunnerSettings":
@@ -84,12 +85,12 @@ class MapsRunnerSettings:
             e3d_base_url=(env.get("E3D_BASE_URL") or "https://e3d.ai").rstrip("/"),
             e3d_api_prefix=env.get("E3D_API_PREFIX") or "/api",
             e3d_api_key=env.get("E3D_API_KEY") or None,
-            clickhouse_host=env.get("CLICKHOUSE_HOST") or "localhost",
-            clickhouse_port=int(env.get("CLICKHOUSE_PORT") or 8123),
-            clickhouse_database=env.get("CLICKHOUSE_DATABASE") or "default",
-            clickhouse_username=env.get("CLICKHOUSE_USERNAME") or "default",
-            clickhouse_password=env.get("CLICKHOUSE_PASSWORD") or "",
-            clickhouse_secure=_parse_bool(env.get("CLICKHOUSE_SECURE")),
+            clickhouse_host=env.get("CLICKHOUSE_HOST") or env.get("CH_HOST") or "localhost",
+            clickhouse_port=int(env.get("CLICKHOUSE_PORT") or env.get("CH_PORT") or 8123),
+            clickhouse_database=env.get("CLICKHOUSE_DATABASE") or env.get("CH_DB") or "default",
+            clickhouse_username=env.get("CLICKHOUSE_USERNAME") or env.get("CH_USER") or "default",
+            clickhouse_password=env.get("CLICKHOUSE_PASSWORD") or env.get("CH_PASSWORD") or "",
+            clickhouse_secure=_parse_bool(env.get("CLICKHOUSE_SECURE") or env.get("CH_SECURE")),
             clickhouse_timeout=float(env.get("CLICKHOUSE_TIMEOUT") or 10.0),
             question_queue_path=env.get("MAPS_QUESTION_QUEUE_PATH") or None,
             run_interval_seconds=int(env.get("MAPS_RUNNER_INTERVAL_SECONDS") or 300),
@@ -101,4 +102,5 @@ class MapsRunnerSettings:
             scheduler_tick_seconds=int(env.get("MAPS_SCHEDULER_TICK_SECONDS") or 60),
             use_sample_context=_parse_bool(env.get("MAPS_RUNNER_USE_SAMPLE_CONTEXT")),
             use_sample_responses=_parse_bool(env.get("MAPS_RUNNER_USE_SAMPLE_RESPONSES")),
+            min_signal_confidence=float(env.get("MAPS_MIN_SIGNAL_CONFIDENCE") or 0.5),
         )
