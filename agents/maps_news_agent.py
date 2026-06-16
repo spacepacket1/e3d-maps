@@ -240,7 +240,7 @@ class MapsNewsAgent(BaseAgent):
             "id": _build_brief_id({"headline": headline, "summary": summary, "stance": stance}, created_at=created_at),
             "scope": "global",
             "headline": headline,
-            "summary": summary,
+            "summary": summary[:420],
             "stance": stance,
             "supporting_signal_ids": top_signal_ids[:8],
             "supporting_story_ids": story_ids,
