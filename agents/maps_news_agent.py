@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha1
@@ -17,6 +18,15 @@ from schemas.traffic_state import TrafficState
 _HAZARD_SIGNAL_TYPES = frozenset({"route_hazard", "route_closure"})
 _CONGESTION_SIGNAL_TYPES = frozenset({"congestion_formation"})
 _FLOW_SIGNAL_TYPES = frozenset({"capital_migration", "destination_prediction", "route_emergence"})
+
+# Unambiguous chain tokens to guard against in brief text.
+# Maps the lowercase word to the set of normalized context labels that permit it.
+# Only includes words that are unambiguous in a crypto market context.
+_CHAIN_GUARD: dict[str, frozenset[str]] = {
+    "solana": frozenset({"solana", "solana_defi", "sol"}),
+    "arbitrum": frozenset({"arbitrum", "arbitrum_defi", "arb"}),
+    "binance": frozenset({"binance", "bnb", "cex"}),
+}
 
 
 @dataclass(frozen=True)
@@ -65,7 +75,7 @@ class MapsNewsAgent(BaseAgent):
             "traffic_state": traffic_state.market_state.value if traffic_state else None,
             "market_bias": cross_chain_state.market_bias if cross_chain_state else None,
         }
-        return {
+        built: dict[str, Any] = {
             "market_state": market_state,
             "market_bias": market_state["market_bias"] or market_state["traffic_state"] or "neutral",
             "dominant_flows": _compact_dominant_flows(traffic_state),
@@ -84,6 +94,8 @@ class MapsNewsAgent(BaseAgent):
                 else None
             ),
         }
+        built["allowed_chains"] = sorted(_extract_allowed_chains(built))
+        return built
 
     def run(self, context: Mapping[str, Any]) -> MapsNewsAgentResult:
         prompt = self.build_prompt(context)
@@ -141,6 +153,7 @@ class MapsNewsAgent(BaseAgent):
         brief = MapsNewsBrief.model_validate(payload)
         _validate_model_brief_shape(brief)
         _validate_supporting_references(brief, built_context=built_context)
+        _validate_chain_mentions(brief, allowed_chains=frozenset(built_context.get("allowed_chains") or []))
         return brief
 
     def _build_fallback_brief(
@@ -430,6 +443,59 @@ def _select_featured_signals(signals: Sequence[NavigationSignal]) -> list[dict[s
         }
         for signal in selected
     ]
+
+
+def _extract_allowed_chains(built: dict[str, Any]) -> set[str]:
+    """Return normalized chain/label names present in structured context fields only.
+
+    Deliberately excludes free-text signal summaries (answer text), which may
+    mention chains not reflected in the structured origin/destination data.
+    """
+    chains: set[str] = set()
+
+    def _add(val: str | None) -> None:
+        if val:
+            chains.add(val.lower().strip())
+
+    for route in built.get("top_cross_chain_routes") or []:
+        for key in ("origin", "destination", "normalized_origin", "normalized_destination"):
+            _add(route.get(key))
+    for item in built.get("active_hazards") or []:
+        for key in ("origin", "destination", "normalized_origin", "normalized_destination"):
+            _add(item.get(key))
+    for item in built.get("active_congestion") or []:
+        for key in ("origin", "destination", "normalized_origin", "normalized_destination"):
+            _add(item.get(key))
+    for dest in built.get("top_destinations") or []:
+        for key in ("destination", "normalized_destination"):
+            _add(dest.get(key))
+    for flow in built.get("dominant_flows") or []:
+        for key in ("origin", "destination"):
+            _add(flow.get(key))
+    # Use only origin/destination from signals — NOT "summary" (answer text)
+    for sig in built.get("recent_featured_signals") or []:
+        for key in ("origin", "destination"):
+            _add(sig.get(key))
+
+    chains.discard("unknown")
+    chains.discard("")
+    return chains
+
+
+def _validate_chain_mentions(brief: "MapsNewsBrief", *, allowed_chains: frozenset[str]) -> None:
+    """Raise ValueError if the brief mentions a chain absent from structured context.
+
+    Guards against the model hallucinating chain names it read from signal
+    answer text, which are not reflected in the flow graph or cross-chain state.
+    """
+    text = (brief.headline + " " + brief.summary).lower()
+    for chain_word, allowed_aliases in _CHAIN_GUARD.items():
+        if re.search(r"\b" + re.escape(chain_word) + r"\b", text):
+            if not (allowed_aliases & allowed_chains):
+                raise ValueError(
+                    f"Brief mentions '{chain_word}' but no {chain_word!r} signals "
+                    "are present in the structured context"
+                )
 
 
 def _validate_supporting_references(
