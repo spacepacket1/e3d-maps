@@ -419,6 +419,11 @@ function EndpointCard({ endpoint }) {
         "aria-expanded": String(!collapsed),
       },
       el(
+        "span",
+        { className: `api-toggle-chevron${collapsed ? "" : " is-open"}` },
+        "›"
+      ),
+      el(
         "div",
         { className: "api-endpoint-header" },
         el(
@@ -428,11 +433,6 @@ function EndpointCard({ endpoint }) {
           el("code", { className: "api-path" }, path)
         ),
         el("div", { className: "api-description" }, description)
-      ),
-      el(
-        "span",
-        { className: `api-toggle-chevron${collapsed ? "" : " is-open"}` },
-        "›"
       )
     ),
 
