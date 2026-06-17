@@ -14,6 +14,11 @@ test("matchRoute resolves dynamic signal detail paths", () => {
   assert.deepEqual(route.params, { id: "navsig_01J" });
 });
 
+test("matchRoute resolves the calibration track-record page", () => {
+  const route = matchRoute("/calibration");
+  assert.equal(route.routeId, "calibration");
+});
+
 test("matchRoute falls back to not-found for unknown pages", () => {
   const route = matchRoute("/does-not-exist");
   assert.equal(route.routeId, "not-found");

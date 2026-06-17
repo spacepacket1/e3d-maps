@@ -5,6 +5,7 @@ export const navigationItems = [
   { href: "/routes", label: "Routes" },
   { href: "/hazards", label: "Hazards" },
   { href: "/congestion", label: "Congestion" },
+  { href: "/calibration", label: "Track Record" },
 ];
 
 export const headerLinks = [
@@ -22,6 +23,7 @@ const routeDefinitions = [
   { id: "routes", path: "/routes" },
   { id: "hazards", path: "/hazards" },
   { id: "congestion", path: "/congestion" },
+  { id: "calibration", path: "/calibration" },
   { id: "story-types", path: "/story-types" },
   { id: "whitepaper", path: "/whitepaper" },
   { id: "docs", path: "/docs" },

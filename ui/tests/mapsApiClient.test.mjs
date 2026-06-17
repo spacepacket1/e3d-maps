@@ -248,3 +248,33 @@ test("getFlowGraph preserves the graph payload when the endpoint is available", 
   const graph = await client.getFlowGraph();
   assert.deepEqual(graph, payload);
 });
+
+test("getCalibration unwraps the calibration payload and forwards lookback_days", async () => {
+  const calibration = { lookback_days: 30, overall: { hit_rate: 0.62, total_scored: 40 }, by_signal_type: {} };
+  const client = createMapsApiClient({
+    fetchImpl: async (url) => {
+      assert.equal(url, "/api/maps/calibration?lookback_days=30");
+      return {
+        status: 200,
+        ok: true,
+        json: async () => ({ status: "ok", calibration }),
+      };
+    },
+  });
+
+  const result = await client.getCalibration({ lookbackDays: 30 });
+  assert.deepEqual(result, calibration);
+});
+
+test("getCalibration returns null for a 404 response", async () => {
+  const client = createMapsApiClient({
+    fetchImpl: async () => ({
+      status: 404,
+      ok: false,
+      statusText: "Not Found",
+      json: async () => ({ status: "not_found" }),
+    }),
+  });
+
+  assert.equal(await client.getCalibration(), null);
+});

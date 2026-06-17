@@ -108,6 +108,13 @@ export function createMapsApiClient({ baseUrl = "", fetchImpl = globalThis.fetch
       const body = await request("/api/maps/graph", { allowNotFound: true });
       return body || null;
     },
+    async getCalibration(filters = {}) {
+      const body = await request("/api/maps/calibration", {
+        allowNotFound: true,
+        query: { lookback_days: filters.lookbackDays },
+      });
+      return body?.calibration || null;
+    },
     async listStoryTypes(filters = {}) {
       const body = await request("/api/story-types", {
         query: {

@@ -13,6 +13,7 @@ from api.normalizers import (
 from clients.clickhouse_client import ClickHouseClient
 from clients.e3d_api_client import E3DAPIClient
 from jobs.compute_signal_utility_scores import ClickHouseReadClient
+from jobs.scoring.families import SUPPORTED_SIGNAL_TYPES, SignalFamily, family_for
 from jobs.scoring.quantitative_scorer import score as quantitative_score
 from schemas.navigation_signal import NavigationSignal
 from schemas.prediction_outcome import PredictionOutcome
@@ -20,7 +21,9 @@ from schemas.route_prediction import RoutePrediction
 from schemas.shared_enums import FlowDirection, FlowMagnitude, OutcomeStatus, ScoringMethod
 from settings import MapsRunnerSettings
 
-SUPPORTED_SIGNAL_TYPES = {"capital_migration", "destination_prediction"}
+# SUPPORTED_SIGNAL_TYPES is now the union of every family with an honest
+# realization measure (flow + hazard + congestion); it is imported from
+# jobs.scoring.families and re-exported here for backtest compatibility.
 
 # Heuristic rubric weights — configurable so they can be tuned from backtests
 # (MAPS-1203) without changing code.  Loaded from env at import time; override
@@ -36,6 +39,39 @@ RUBRIC_PENALTY_PER_CONTRADICTION: float = float(_os.environ.get("MAPS_RUBRIC_PEN
 # When |heuristic_accuracy - quantitative_accuracy| exceeds this threshold the
 # outcome is flagged DISPUTED and excluded from training export by default.
 SCORER_DISPUTE_THRESHOLD: float = float(_os.environ.get("MAPS_SCORER_DISPUTE_THRESHOLD", "0.35"))
+
+# --- Hazard-family rubric (route_hazard / route_closure) ---------------------
+# A hazard "realizes" when adverse evidence materializes: danger-flavored stories
+# about the route's asset/destination, plus capital fleeing the route (measured
+# quantitatively as net outflow). These launch defaults will be replaced by
+# backtested weights (MAPS-1203), same as the flow rubric above.
+HAZARD_WEIGHT_DANGER: float = 0.7
+HAZARD_WEIGHT_NO_RECOVERY: float = 0.1
+HAZARD_PENALTY_RECOVERY: float = 0.3
+HAZARD_DANGER_KEYWORDS: tuple[str, ...] = (
+    "exploit", "hack", "drain", "rug", "blacklist", "distribution", "dump",
+    "liquidat", "depeg", "scam", "wash", "exit", "closure", "sell", "outflow",
+    "withdraw", "risk", "unsafe", "freeze", "honeypot",
+)
+HAZARD_RECOVERY_KEYWORDS: tuple[str, ...] = (
+    "recovery", "recovered", "resumed", "stabiliz", "all clear", "inflow",
+    "accumulation", "safe", "resolved", "reopen",
+)
+
+# --- Congestion-family rubric (congestion_formation) -------------------------
+# Congestion "realizes" when crowding persists rather than dissipating: activity
+# stories about the zone, plus sustained on-chain activity referencing it.
+CONGESTION_WEIGHT_CROWDING: float = 0.7
+CONGESTION_WEIGHT_NO_DISSIPATION: float = 0.1
+CONGESTION_PENALTY_DISSIPATION: float = 0.3
+CONGESTION_ACTIVITY_KEYWORDS: tuple[str, ...] = (
+    "surge", "spike", "crowd", "congest", "concentrat", "activity", "volume",
+    "airdrop", "holders", "rush", "frenzy", "inflow", "accumulation",
+)
+CONGESTION_DISSIPATE_KEYWORDS: tuple[str, ...] = (
+    "cooldown", "quiet", "subsid", "decline", "slowdown", "outflow", "exit",
+    "dispers", "unwind",
+)
 
 
 @dataclass(frozen=True)
@@ -57,6 +93,24 @@ class EvidenceBucket:
     skipped_stablecoin_activity: int = 0
 
 
+@dataclass(frozen=True)
+class FamilyResult:
+    """Per-family scoring output, normalized so the outcome-building code is
+    family-agnostic. Each family computes its own two independent witnesses
+    (heuristic + quantitative), the blended accuracy, the realized
+    direction/magnitude, a notes body, and support/contradiction counts."""
+
+    heuristic_accuracy: float
+    quantitative_accuracy: float
+    prediction_accuracy: float
+    realized_direction: FlowDirection
+    realized_magnitude: FlowMagnitude
+    support_count: int
+    contradiction_count: int
+    notes_body: str
+    route_prediction_id: str | None = None
+
+
 def score_prediction(
     *,
     signal: NavigationSignal,
@@ -68,88 +122,294 @@ def score_prediction(
     consumer_exposure: int = 0,
 ) -> OutcomeDecision:
     scored_at = _utcnow() if created_at is None else _to_utc(created_at)
-    selected_route = _select_route_prediction(signal=signal, route_predictions=route_predictions)
-    predicted_direction = _predicted_direction(signal=signal, route_prediction=selected_route)
 
-    # Materialise iterables once so they can be passed to both scorers.
+    # Materialise iterables once so they can be passed to every scorer.
     stories_list = list(stories)
     exchange_flows_list = list(exchange_flows)
     stablecoin_activity_list = list(stablecoin_activity)
 
-    evidence = _collect_evidence(
-        signal=signal,
-        predicted_direction=predicted_direction,
-        stories=stories_list,
-        exchange_flows=exchange_flows_list,
-        stablecoin_activity=stablecoin_activity_list,
-    )
+    # Dispatch to the family-appropriate dual-witness scorer. Each signal type
+    # realizes differently, so they cannot share one rubric without producing
+    # dishonest labels. UNSCORABLE types are filtered out upstream in run() and
+    # fall through to the flow scorer only if score_prediction is called directly.
+    family = family_for(signal.signal_type)
+    if family is SignalFamily.HAZARD:
+        result = _score_hazard_family(
+            signal=signal,
+            stories=stories_list,
+            exchange_flows=exchange_flows_list,
+            stablecoin_activity=stablecoin_activity_list,
+        )
+    elif family is SignalFamily.CONGESTION:
+        result = _score_congestion_family(
+            signal=signal,
+            stories=stories_list,
+            exchange_flows=exchange_flows_list,
+            stablecoin_activity=stablecoin_activity_list,
+        )
+    else:
+        result = _score_flow_family(
+            signal=signal,
+            route_predictions=route_predictions,
+            stories=stories_list,
+            exchange_flows=exchange_flows_list,
+            stablecoin_activity=stablecoin_activity_list,
+        )
 
-    # --- Heuristic scorer (story-based, v1 rubric) ---
-    heuristic_accuracy = _score_accuracy(evidence)
-
-    # --- Quantitative scorer (flow-series only, independent of stories) ---
-    quant_result = quantitative_score(
-        predicted_direction=str(predicted_direction),
-        exchange_flows=exchange_flows_list,
-        stablecoin_series=stablecoin_activity_list,
-    )
-    quant_accuracy = quant_result.realized_score
-
-    # --- Blend and dispute detection ---
-    scorer_agreement = abs(heuristic_accuracy - quant_accuracy)
+    # --- Dispute detection (family-agnostic) ---
+    scorer_agreement = abs(result.heuristic_accuracy - result.quantitative_accuracy)
     disputed = scorer_agreement > SCORER_DISPUTE_THRESHOLD
+    prediction_accuracy = result.prediction_accuracy
+    scoring_method = ScoringMethod.BLENDED
 
     if disputed:
-        # Blended mean, but flag the outcome so the training export can exclude it.
-        prediction_accuracy = (heuristic_accuracy + quant_accuracy) / 2.0
-        scoring_method = ScoringMethod.BLENDED
+        status = OutcomeStatus.DISPUTED
     else:
-        # Both scorers agree: use the blended mean as the primary accuracy.
-        prediction_accuracy = (heuristic_accuracy + quant_accuracy) / 2.0
-        scoring_method = ScoringMethod.BLENDED
-
-    realized_direction = _realized_direction(
-        predicted_direction=predicted_direction,
-        evidence=evidence,
-    )
-    realized_magnitude = _realized_magnitude(
-        signal=signal,
-        evidence=evidence,
-        prediction_accuracy=prediction_accuracy,
-    )
-    status = _derive_outcome_status(
-        prediction_accuracy=prediction_accuracy,
-        evidence=evidence,
-        disputed=disputed,
-    )
+        status = _derive_outcome_status(
+            prediction_accuracy=prediction_accuracy,
+            support_count=result.support_count,
+            contradiction_count=result.contradiction_count,
+        )
 
     outcome = PredictionOutcome(
         id=_build_outcome_id(signal=signal),
         navigation_signal_id=signal.id or "",
-        route_prediction_id=selected_route.id if selected_route and selected_route.id else None,
+        route_prediction_id=result.route_prediction_id,
         evaluation_window_hours=signal.time_horizon_hours,
         prediction_accuracy=prediction_accuracy,
-        realized_direction=realized_direction,
-        realized_magnitude=realized_magnitude,
+        realized_direction=result.realized_direction,
+        realized_magnitude=result.realized_magnitude,
         map_prediction_correct=(not disputed) and prediction_accuracy >= 0.6,
-        notes=_build_notes(
-            signal=signal,
-            evidence=evidence,
-            prediction_accuracy=prediction_accuracy,
-            heuristic_accuracy=heuristic_accuracy,
-            quant_accuracy=quant_accuracy,
+        notes=result.notes_body + _dual_scorer_suffix(
+            heuristic_accuracy=result.heuristic_accuracy,
+            quant_accuracy=result.quantitative_accuracy,
             disputed=disputed,
         ),
         created_by_agent="score_pending_predictions",
         created_at=scored_at,
         # Phase 12 dual-scorer fields.
-        heuristic_accuracy=heuristic_accuracy,
-        quantitative_accuracy=quant_accuracy,
+        heuristic_accuracy=result.heuristic_accuracy,
+        quantitative_accuracy=result.quantitative_accuracy,
         scorer_agreement=scorer_agreement,
         scoring_method=scoring_method,
         consumer_exposure=consumer_exposure,
     )
     return OutcomeDecision(outcome=outcome, status=status)
+
+
+def _score_flow_family(
+    *,
+    signal: NavigationSignal,
+    route_predictions: Iterable[RoutePrediction],
+    stories: list[dict[str, Any]],
+    exchange_flows: list[dict[str, Any]],
+    stablecoin_activity: list[dict[str, Any]],
+) -> FamilyResult:
+    """Directional capital-movement scorer (the original v1 rubric).
+
+    Heuristic witness: matching stories / exchange flows / stablecoin activity.
+    Quantitative witness: net flow direction from the raw series.
+    """
+    selected_route = _select_route_prediction(signal=signal, route_predictions=route_predictions)
+    predicted_direction = _predicted_direction(signal=signal, route_prediction=selected_route)
+
+    evidence = _collect_evidence(
+        signal=signal,
+        predicted_direction=predicted_direction,
+        stories=stories,
+        exchange_flows=exchange_flows,
+        stablecoin_activity=stablecoin_activity,
+    )
+
+    heuristic_accuracy = _score_accuracy(evidence)
+    quant_accuracy = quantitative_score(
+        predicted_direction=str(predicted_direction),
+        exchange_flows=exchange_flows,
+        stablecoin_series=stablecoin_activity,
+    ).realized_score
+    prediction_accuracy = (heuristic_accuracy + quant_accuracy) / 2.0
+
+    return FamilyResult(
+        heuristic_accuracy=heuristic_accuracy,
+        quantitative_accuracy=quant_accuracy,
+        prediction_accuracy=prediction_accuracy,
+        realized_direction=_realized_direction(predicted_direction=predicted_direction, evidence=evidence),
+        realized_magnitude=_realized_magnitude(
+            signal=signal, evidence=evidence, prediction_accuracy=prediction_accuracy
+        ),
+        support_count=_support_count(evidence),
+        contradiction_count=_contradiction_count(evidence),
+        notes_body=_build_flow_notes(
+            signal=signal, evidence=evidence, prediction_accuracy=prediction_accuracy
+        ),
+        route_prediction_id=selected_route.id if selected_route and selected_route.id else None,
+    )
+
+
+def _score_hazard_family(
+    *,
+    signal: NavigationSignal,
+    stories: list[dict[str, Any]],
+    exchange_flows: list[dict[str, Any]],
+    stablecoin_activity: list[dict[str, Any]],
+) -> FamilyResult:
+    """route_hazard / route_closure scorer.
+
+    A hazard realizes when danger materializes along the route. The two
+    witnesses are independent by construction:
+
+      - Heuristic (stories): danger-flavored stories about the route's asset or
+        destination appeared, with no contradicting recovery stories.
+      - Quantitative (flow series only): capital actually fled the route — net
+        OUTFLOW from the destination, measured by the shared quantitative scorer.
+    """
+    window_start = _to_utc(signal.created_at)
+    window_end = _evaluation_window_end(signal)
+    labels = _signal_labels(signal)
+
+    danger_stories: list[dict[str, Any]] = []
+    recovery_stories: list[dict[str, Any]] = []
+    for story in stories:
+        if not _within_window(story, window_start, window_end):
+            continue
+        if not _matches_any_label(story, labels):
+            continue
+        text = _record_text(story)
+        if _contains_keyword(text, HAZARD_DANGER_KEYWORDS):
+            danger_stories.append(story)
+        elif _contains_keyword(text, HAZARD_RECOVERY_KEYWORDS):
+            recovery_stories.append(story)
+
+    heuristic_accuracy = 0.0
+    if danger_stories:
+        heuristic_accuracy += HAZARD_WEIGHT_DANGER
+    if recovery_stories:
+        heuristic_accuracy -= HAZARD_PENALTY_RECOVERY
+    else:
+        heuristic_accuracy += HAZARD_WEIGHT_NO_RECOVERY
+    heuristic_accuracy = _clamp01(heuristic_accuracy)
+
+    # Quantitative witness: a closing/hazardous route should show capital leaving.
+    quant_accuracy = quantitative_score(
+        predicted_direction=str(FlowDirection.OUTFLOW),
+        exchange_flows=exchange_flows,
+        stablecoin_series=stablecoin_activity,
+    ).realized_score
+    prediction_accuracy = (heuristic_accuracy + quant_accuracy) / 2.0
+
+    support_count = 1 if danger_stories else 0
+    contradiction_count = 1 if recovery_stories else 0
+    if support_count and contradiction_count:
+        realized_direction = FlowDirection.MIXED
+    elif prediction_accuracy >= 0.6:
+        realized_direction = FlowDirection.OUTFLOW
+    else:
+        realized_direction = FlowDirection.NEUTRAL
+
+    notes_body = (
+        f"Hazard evaluation window: {_iso(window_start)} to {_iso(window_end)}. "
+        f"Danger stories: {_describe_records(danger_stories)}. "
+        f"Recovery stories: {_describe_records(recovery_stories)}. "
+        f"Quantitative witness predicted route outflow. "
+        f"final_accuracy={prediction_accuracy:.2f}."
+    )
+
+    return FamilyResult(
+        heuristic_accuracy=heuristic_accuracy,
+        quantitative_accuracy=quant_accuracy,
+        prediction_accuracy=prediction_accuracy,
+        realized_direction=realized_direction,
+        realized_magnitude=_magnitude_from_accuracy(signal=signal, prediction_accuracy=prediction_accuracy),
+        support_count=support_count,
+        contradiction_count=contradiction_count,
+        notes_body=notes_body,
+    )
+
+
+def _score_congestion_family(
+    *,
+    signal: NavigationSignal,
+    stories: list[dict[str, Any]],
+    exchange_flows: list[dict[str, Any]],
+    stablecoin_activity: list[dict[str, Any]],
+) -> FamilyResult:
+    """congestion_formation scorer.
+
+    Congestion realizes when crowding persists rather than dissipating:
+
+      - Heuristic (stories): activity/crowding stories about the zone appeared,
+        with no contradicting dissipation stories.
+      - Quantitative (flow series only): sustained on-chain activity referencing
+        the zone (record count / elevated magnitude) within the window.
+    """
+    window_start = _to_utc(signal.created_at)
+    window_end = _evaluation_window_end(signal)
+    labels = _signal_labels(signal)
+
+    crowding_stories: list[dict[str, Any]] = []
+    dissipation_stories: list[dict[str, Any]] = []
+    for story in stories:
+        if not _within_window(story, window_start, window_end):
+            continue
+        if not _matches_any_label(story, labels):
+            continue
+        text = _record_text(story)
+        if _contains_keyword(text, CONGESTION_ACTIVITY_KEYWORDS):
+            crowding_stories.append(story)
+        elif _contains_keyword(text, CONGESTION_DISSIPATE_KEYWORDS):
+            dissipation_stories.append(story)
+
+    heuristic_accuracy = 0.0
+    if crowding_stories:
+        heuristic_accuracy += CONGESTION_WEIGHT_CROWDING
+    if dissipation_stories:
+        heuristic_accuracy -= CONGESTION_PENALTY_DISSIPATION
+    else:
+        heuristic_accuracy += CONGESTION_WEIGHT_NO_DISSIPATION
+    heuristic_accuracy = _clamp01(heuristic_accuracy)
+
+    # Quantitative witness: did meaningful activity around the zone persist?
+    active_records = 0
+    for record in (*exchange_flows, *stablecoin_activity):
+        if not _within_window(record, window_start, window_end, allow_missing=True):
+            continue
+        if _matches_any_label(record, labels) or _extract_magnitude(record) in (
+            FlowMagnitude.MODERATE,
+            FlowMagnitude.HIGH,
+        ):
+            active_records += 1
+    if active_records >= 3:
+        quant_accuracy = 0.85
+    elif active_records >= 1:
+        quant_accuracy = 0.6
+    else:
+        quant_accuracy = 0.25
+    prediction_accuracy = (heuristic_accuracy + quant_accuracy) / 2.0
+
+    support_count = 1 if crowding_stories else 0
+    contradiction_count = 1 if dissipation_stories else 0
+    realized_direction = (
+        FlowDirection.MIXED if (support_count and contradiction_count) else FlowDirection.NEUTRAL
+    )
+
+    notes_body = (
+        f"Congestion evaluation window: {_iso(window_start)} to {_iso(window_end)}. "
+        f"Crowding stories: {_describe_records(crowding_stories)}. "
+        f"Dissipation stories: {_describe_records(dissipation_stories)}. "
+        f"Active records referencing zone: {active_records}. "
+        f"final_accuracy={prediction_accuracy:.2f}."
+    )
+
+    return FamilyResult(
+        heuristic_accuracy=heuristic_accuracy,
+        quantitative_accuracy=quant_accuracy,
+        prediction_accuracy=prediction_accuracy,
+        realized_direction=realized_direction,
+        realized_magnitude=_magnitude_from_accuracy(signal=signal, prediction_accuracy=prediction_accuracy),
+        support_count=support_count,
+        contradiction_count=contradiction_count,
+        notes_body=notes_body,
+    )
 
 
 def run(
@@ -478,27 +738,8 @@ def _realized_magnitude(
     return FlowMagnitude.LOW
 
 
-def _derive_outcome_status(
-    *,
-    prediction_accuracy: float,
-    evidence: EvidenceBucket,
-    disputed: bool = False,
-) -> OutcomeStatus:
-    # Disputed outcomes (large heuristic/quantitative scorer disagreement) get
-    # their own status so they can be excluded from training export.
-    if disputed:
-        return OutcomeStatus.DISPUTED
-
-    contradiction_count = sum(
-        1
-        for bucket in (
-            evidence.contradicting_stories,
-            evidence.contradicting_exchange_flows,
-            evidence.contradicting_stablecoin_activity,
-        )
-        if bucket
-    )
-    support_count = sum(
+def _support_count(evidence: EvidenceBucket) -> int:
+    return sum(
         1
         for bucket in (
             evidence.supporting_stories,
@@ -507,6 +748,30 @@ def _derive_outcome_status(
         )
         if bucket
     )
+
+
+def _contradiction_count(evidence: EvidenceBucket) -> int:
+    return sum(
+        1
+        for bucket in (
+            evidence.contradicting_stories,
+            evidence.contradicting_exchange_flows,
+            evidence.contradicting_stablecoin_activity,
+        )
+        if bucket
+    )
+
+
+def _derive_outcome_status(
+    *,
+    prediction_accuracy: float,
+    support_count: int,
+    contradiction_count: int,
+) -> OutcomeStatus:
+    # DISPUTED is handled by the caller before this point; this maps a settled
+    # (heuristic/quantitative-agreeing) outcome to a status. The logic is
+    # family-agnostic: it works from blended accuracy and support/contradiction
+    # counts, which every family scorer reports.
     if prediction_accuracy >= 0.6 and contradiction_count == 0:
         return OutcomeStatus.CORRECT
     if support_count and contradiction_count:
@@ -625,38 +890,33 @@ def _stablecoin_relation(
     return 0
 
 
-def _build_notes(
+def _dual_scorer_suffix(
+    *,
+    heuristic_accuracy: float,
+    quant_accuracy: float,
+    disputed: bool,
+) -> str:
+    """The family-agnostic dual-scorer tail appended to every outcome's notes."""
+    agreement = abs(heuristic_accuracy - quant_accuracy)
+    return (
+        f" Dual-scorer: heuristic={heuristic_accuracy:.2f}, "
+        f"quantitative={quant_accuracy:.2f}, "
+        f"agreement_delta={agreement:.2f}"
+        f"{', DISPUTED' if disputed else ''}."
+    )
+
+
+def _build_flow_notes(
     *,
     signal: NavigationSignal,
     evidence: EvidenceBucket,
     prediction_accuracy: float,
-    heuristic_accuracy: float | None = None,
-    quant_accuracy: float | None = None,
-    disputed: bool = False,
 ) -> str:
-    window_start = _to_utc(signal.created_at).isoformat().replace("+00:00", "Z")
-    window_end = _evaluation_window_end(signal).isoformat().replace("+00:00", "Z")
-    contradiction_count = sum(
-        1
-        for bucket in (
-            evidence.contradicting_stories,
-            evidence.contradicting_exchange_flows,
-            evidence.contradicting_stablecoin_activity,
-        )
-        if bucket
-    )
+    window_start = _iso(_to_utc(signal.created_at))
+    window_end = _iso(_evaluation_window_end(signal))
+    contradiction_count = _contradiction_count(evidence)
     no_contradiction_bonus = RUBRIC_WEIGHT_NO_CONTRADICTION if contradiction_count == 0 else 0.0
     contradiction_penalty = contradiction_count * RUBRIC_PENALTY_PER_CONTRADICTION
-
-    dual_scorer_note = ""
-    if heuristic_accuracy is not None and quant_accuracy is not None:
-        agreement = abs(heuristic_accuracy - quant_accuracy)
-        dual_scorer_note = (
-            f" Dual-scorer: heuristic={heuristic_accuracy:.2f}, "
-            f"quantitative={quant_accuracy:.2f}, "
-            f"agreement_delta={agreement:.2f}"
-            f"{', DISPUTED' if disputed else ''}."
-        )
 
     return (
         f"Evaluation window: {window_start} to {window_end}. "
@@ -675,7 +935,6 @@ def _build_notes(
         f"contradiction_penalty={contradiction_penalty:.1f}, "
         f"no_contradiction_bonus={no_contradiction_bonus:.1f}, "
         f"final_accuracy={prediction_accuracy:.2f}."
-        f"{dual_scorer_note}"
     )
 
 
@@ -710,6 +969,52 @@ def _group_routes_by_signal(
 
 def _evaluation_window_end(signal: NavigationSignal) -> datetime:
     return _to_utc(signal.created_at) + timedelta(hours=max(0, signal.time_horizon_hours))
+
+
+def _iso(value: datetime) -> str:
+    return value.isoformat().replace("+00:00", "Z")
+
+
+def _signal_labels(signal: NavigationSignal) -> tuple[str, ...]:
+    """The asset/destination/origin labels a hazard or congestion signal is about."""
+    candidates = (signal.destination, signal.origin, *signal.asset_scope)
+    return tuple(label for label in candidates if label)
+
+
+def _matches_any_label(record: dict[str, Any], labels: Sequence[str]) -> bool:
+    return any(_item_matches_label(record, label) for label in labels)
+
+
+def _within_window(
+    record: dict[str, Any],
+    window_start: datetime,
+    window_end: datetime,
+    *,
+    allow_missing: bool = False,
+) -> bool:
+    """Whether a record's timestamp falls inside the evaluation window.
+
+    ``allow_missing`` controls untimestamped records: stories are required to be
+    timestamped (so future/unknown data cannot leak in), while flow records —
+    already window-bounded by the API query — are counted when no timestamp is
+    present so a genuinely active window is not under-counted.
+    """
+    timestamp = _extract_timestamp(record)
+    if timestamp is None:
+        return allow_missing
+    return window_start < timestamp <= window_end
+
+
+def _magnitude_from_accuracy(
+    *,
+    signal: NavigationSignal,
+    prediction_accuracy: float,
+) -> FlowMagnitude:
+    if prediction_accuracy >= 0.75 or signal.confidence >= 0.8:
+        return FlowMagnitude.HIGH
+    if prediction_accuracy >= 0.35:
+        return FlowMagnitude.MODERATE
+    return FlowMagnitude.LOW
 
 
 def _build_outcome_id(signal: NavigationSignal) -> str:

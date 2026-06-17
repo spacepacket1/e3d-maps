@@ -2,6 +2,7 @@ import { html, useEffect, useState } from "../vendor.js";
 import { formatConfidence, formatDateTime, titleCaseLabel, toArray } from "../formatters.js";
 import { FlowGraph } from "../components/FlowGraph.js";
 import { RECOMMENDATION_ACTION_CLASSES } from "../utils/recommendationActionClasses.js";
+import { deriveTrackRecord } from "../utils/calibration.js";
 
 const AUTO_REFRESH_MS = 60_000;
 const NEWS_STALE_MINUTES = 15;
@@ -120,6 +121,7 @@ export function MapsHomePage({ api, navigate }) {
     crossChainActivity: null,
     allSignals: [],
     topRec: null,
+    calibration: null,
   });
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -140,13 +142,21 @@ export function MapsHomePage({ api, navigate }) {
         api.getCrossChainActivity(),
         api.listSignals({ limit: 200 }),
         api.getRecommendations({ maxResults: 1 }),
+        api.getCalibration({ lookbackDays: 30 }),
       ]);
 
       if (cancelled) {
         return;
       }
 
-      const [trafficStateResult, mapsNewsResult, crossChainResult, signalsResult, recommendationsResult] = results;
+      const [
+        trafficStateResult,
+        mapsNewsResult,
+        crossChainResult,
+        signalsResult,
+        recommendationsResult,
+        calibrationResult,
+      ] = results;
       const rejectedMessages = collectRejectedMessages(results);
 
       setState({
@@ -158,6 +168,7 @@ export function MapsHomePage({ api, navigate }) {
         crossChainActivity: resolveSettledValue(crossChainResult),
         allSignals: toArray(resolveSettledValue(signalsResult)?.signals),
         topRec: resolveSettledValue(recommendationsResult)?.recommendations?.[0] || null,
+        calibration: resolveSettledValue(calibrationResult),
       });
     }
 
@@ -176,6 +187,7 @@ export function MapsHomePage({ api, navigate }) {
     trafficState || state.allSignals.length || mapsNews || hasCrossChainContent(crossChainActivity)
   );
   const newsTimestamp = formatRelativeUpdatedAt(mapsNews?.generated_at);
+  const trackRecord = deriveTrackRecord(state.calibration);
   const crossChainItems = {
     top_routes: toArray(crossChainActivity?.top_routes).slice(0, CROSS_CHAIN_LIMITS.top_routes),
     active_hazards: toArray(crossChainActivity?.active_hazards).slice(0, CROSS_CHAIN_LIMITS.active_hazards),
@@ -238,6 +250,27 @@ export function MapsHomePage({ api, navigate }) {
                   `}
             </div>
           </section>
+
+          <a
+            href="/calibration"
+            className="track-record-strip"
+            onClick=${(event) => {
+              event.preventDefault();
+              navigate("/calibration");
+            }}
+          >
+            <span className="panel-label">Track Record · 30d</span>
+            ${trackRecord.scored
+              ? html`
+                  <span className="track-record-stats">
+                    <span className="score-chip">Hit rate <strong>${formatConfidence(trackRecord.hitRate)}</strong></span>
+                    <span className="score-chip">Calibration error <strong>${formatConfidence(trackRecord.calibrationError)}</strong></span>
+                    <span className="score-chip">${trackRecord.totalScored.toLocaleString()} scored</span>
+                  </span>
+                `
+              : html`<span className="track-record-stats"><span className="score-chip">Scoring in progress — first outcomes pending</span></span>`}
+            <span className="track-record-cta">View track record →</span>
+          </a>
 
           <section className="panel" style=${{ padding: 0, overflow: "hidden", marginBottom: "1.5rem" }}>
             <div style=${{ padding: "1rem 1.25rem 0.5rem" }}>

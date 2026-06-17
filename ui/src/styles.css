@@ -1249,6 +1249,41 @@ button {
   color: var(--text);
 }
 
+.track-record-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1.25rem;
+  border: 1px solid var(--panel-border);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  background: var(--panel);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.track-record-strip:hover {
+  border-left-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.track-record-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+}
+
+.track-record-cta {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
 .story-chip {
   background: var(--accent-soft);
   color: var(--accent);
