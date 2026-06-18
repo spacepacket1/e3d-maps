@@ -1035,7 +1035,7 @@ def _signal_uses_stablecoins(signal: NavigationSignal) -> bool:
 
 
 def _extract_timestamp(item: dict[str, Any]) -> datetime | None:
-    for key in ("timestamp", "created_at", "observed_at", "window_end", "ended_at", "time"):
+    for key in ("timestamp", "created_at", "observed_at", "window_end", "ended_at", "time", "ts_created"):
         value = item.get(key)
         parsed = _parse_datetime(value)
         if parsed is not None:

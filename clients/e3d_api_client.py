@@ -196,8 +196,8 @@ class E3DAPIClient(BaseE3DReadClient):
     ) -> dict[str, Any]:
         return {
             "limit": max(0, limit),
-            "time_min": E3DAPIClient._format_datetime(start_time),
-            "time_max": E3DAPIClient._format_datetime(end_time),
+            "since": E3DAPIClient._format_datetime(start_time),
+            "until": E3DAPIClient._format_datetime(end_time),
         }
 
     @staticmethod
