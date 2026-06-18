@@ -531,10 +531,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _list_pending_signals(reader: ClickHouseReadClient, *, limit: int) -> list[NavigationSignal]:
+    type_list = ", ".join(f"'{t}'" for t in sorted(SUPPORTED_SIGNAL_TYPES))
     rows = reader.select(
         (
             "SELECT * FROM NavigationSignals "
             "WHERE outcome_status = 'pending' "
+            f"AND signal_type IN ({type_list}) "
             "ORDER BY created_at ASC "
             f"LIMIT {max(0, limit)} FORMAT JSONEachRow"
         )
