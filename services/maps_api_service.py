@@ -15,9 +15,10 @@ from api.normalizers import (
     normalize_story_type_definition_row,
     normalize_traffic_state_row,
 )
+from schemas.consumer_attestation import ConsumerAttestation
 from schemas.cross_chain_activity_state import CrossChainActivityState
 from schemas.maps_news_brief import MapsNewsBrief
-from clients.clickhouse_client import ClickHouseClientError
+from clients.clickhouse_client import ClickHouseClient, ClickHouseClientError
 from schemas.navigation_signal import NavigationSignal
 from schemas.recommendation import Recommendation
 from schemas.route_prediction import RoutePrediction
@@ -48,6 +49,7 @@ class MapsAPIService:
         secure: bool = False,
         timeout: float = 10.0,
         query_executor: Callable[[bytes], bytes] | None = None,
+        clickhouse_writer: ClickHouseClient | None = None,
     ) -> None:
         self.host = host
         self.port = port
@@ -57,6 +59,7 @@ class MapsAPIService:
         self.secure = secure
         self.timeout = timeout
         self._query_executor = query_executor or self._default_query_executor
+        self._clickhouse_writer = clickhouse_writer
 
     def get_latest_state(self) -> TrafficState | None:
         rows = self._query_rows(
@@ -153,6 +156,38 @@ class MapsAPIService:
         if not rows:
             return None
         return normalize_navigation_signal_row(rows[0])
+
+    def ingest_consumer_attestation(
+        self,
+        payload: ConsumerAttestation | dict[str, Any],
+    ) -> ConsumerAttestation:
+        """Validate and persist a downstream consumer's attestation.
+
+        This is the producer-side ingestion path that feeds
+        ``PredictionOutcome.consumer_exposure`` at settlement. The public
+        ``POST /api/maps/outcomes`` endpoint in the main e3d server is a
+        documented cross-repo step; this method defines and tests the contract.
+        """
+        attestation = (
+            payload
+            if isinstance(payload, ConsumerAttestation)
+            else ConsumerAttestation.model_validate(payload)
+        )
+        self._writer().insert_consumer_attestation(attestation)
+        return attestation
+
+    def _writer(self) -> ClickHouseClient:
+        if self._clickhouse_writer is None:
+            self._clickhouse_writer = ClickHouseClient(
+                host=self.host,
+                port=self.port,
+                database=self.database,
+                username=self.username,
+                password=self.password,
+                secure=self.secure,
+                timeout=self.timeout,
+            )
+        return self._clickhouse_writer
 
     def get_notable_signals(
         self,

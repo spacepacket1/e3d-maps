@@ -600,6 +600,25 @@ def _bool_or_none(value: Any) -> bool | None:
     return None
 
 
+def split_accuracy_by_exposure(
+    prediction_accuracy: float,
+    consumer_exposure: int,
+) -> tuple[float | None, float | None]:
+    """Split a settled accuracy into (exogenous_accuracy, induced_accuracy).
+
+    Reflexivity model: an outcome is *exogenous* when no downstream consumer
+    acted on the signal before its window closed (``consumer_exposure == 0``),
+    and *induced* when at least one did. The split is recorded per row so the
+    two populations stay queryable via ``avg(exogenous_accuracy)`` /
+    ``avg(induced_accuracy)``. Returns ``(None, None)`` shapes where the row does
+    not belong to that population.
+    """
+    accuracy = _clamp01(float(prediction_accuracy))
+    if consumer_exposure > 0:
+        return None, accuracy
+    return accuracy, None
+
+
 def _clamp01(value: float) -> float:
     return max(0.0, min(1.0, value))
 

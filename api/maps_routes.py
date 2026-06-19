@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from pydantic import ValidationError
+
 from api.serialization import model_to_dict
 from services.maps_api_service import MapsAPIService, PaginatedResult
 
@@ -230,6 +232,25 @@ def get_maps_calibration(
     return RouteResponse(
         status_code=200,
         body={"status": "ok", "calibration": data},
+    )
+
+
+def post_maps_outcome(service: MapsAPIService, payload: dict[str, Any]) -> RouteResponse:
+    """Ingest a consumer attestation (downstream agent's action report).
+
+    Defines the contract for the public POST /api/maps/outcomes endpoint; the
+    matching Express route in the main e3d server is a deferred cross-repo step.
+    """
+    try:
+        attestation = service.ingest_consumer_attestation(payload)
+    except ValidationError as exc:
+        return RouteResponse(
+            status_code=400,
+            body={"status": "invalid", "error": "invalid_attestation", "detail": exc.errors()},
+        )
+    return RouteResponse(
+        status_code=201,
+        body={"status": "ok", "attestation": model_to_dict(attestation)},
     )
 
 
