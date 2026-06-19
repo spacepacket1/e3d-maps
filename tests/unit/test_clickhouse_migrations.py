@@ -31,3 +31,14 @@ def test_phase_1_maps_news_cross_chain_migration_matches_repo_conventions():
     assert "active_hazards_json" in migration_sql
     assert migration_sql.count("ENGINE = MergeTree") == 2
     assert migration_sql.count("inserted_at") == 2
+
+
+def test_phase_1_watch_agent_migration_defines_all_three_tables():
+    migration_sql = Path("db/migrations/0005_add_watch_agent_tables.sql").read_text()
+
+    assert "CREATE TABLE IF NOT EXISTS WatchPredictions" in migration_sql
+    assert "CREATE TABLE IF NOT EXISTS WatchDrafts" in migration_sql
+    assert "CREATE TABLE IF NOT EXISTS ConsumerAttestations" in migration_sql
+    assert "idempotency_key" in migration_sql
+    assert migration_sql.count("ENGINE = MergeTree") == 3
+    assert migration_sql.count("DateTime DEFAULT now()") == 3

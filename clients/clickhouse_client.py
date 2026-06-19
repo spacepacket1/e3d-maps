@@ -8,6 +8,7 @@ from typing import Any, Iterable, TextIO
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from schemas.consumer_attestation import ConsumerAttestation
 from schemas.cross_chain_activity_state import CrossChainActivityState
 from schemas.flow_graph import FlowEdge, FlowGraphSnapshot
 from schemas.maps_news_brief import MapsNewsBrief
@@ -17,6 +18,8 @@ from schemas.route_prediction import RoutePrediction
 from schemas.shared_enums import OutcomeStatus
 from schemas.signal_utility_score import SignalUtilityScore
 from schemas.traffic_state import TrafficState
+from schemas.watch_draft import WatchDraft
+from schemas.watch_prediction import WatchPrediction
 
 
 class ClickHouseClientError(RuntimeError):
@@ -157,6 +160,51 @@ class ClickHouseClient:
             records=records,
             schema_model=MapsNewsBrief,
             serializer=self._serialize_maps_news_brief,
+        )
+
+    def insert_watch_prediction(self, record: WatchPrediction | dict[str, Any]) -> int:
+        return self.insert_watch_predictions([record])
+
+    def insert_watch_predictions(
+        self,
+        records: Iterable[WatchPrediction | dict[str, Any]],
+    ) -> int:
+        return self._insert_models(
+            table_name="WatchPredictions",
+            records=records,
+            schema_model=WatchPrediction,
+            serializer=self._serialize_watch_prediction,
+        )
+
+    def insert_watch_draft(self, record: WatchDraft | dict[str, Any]) -> int:
+        return self.insert_watch_drafts([record])
+
+    def insert_watch_drafts(
+        self,
+        records: Iterable[WatchDraft | dict[str, Any]],
+    ) -> int:
+        return self._insert_models(
+            table_name="WatchDrafts",
+            records=records,
+            schema_model=WatchDraft,
+            serializer=self._serialize_watch_draft,
+        )
+
+    def insert_consumer_attestation(
+        self,
+        record: ConsumerAttestation | dict[str, Any],
+    ) -> int:
+        return self.insert_consumer_attestations([record])
+
+    def insert_consumer_attestations(
+        self,
+        records: Iterable[ConsumerAttestation | dict[str, Any]],
+    ) -> int:
+        return self._insert_models(
+            table_name="ConsumerAttestations",
+            records=records,
+            schema_model=ConsumerAttestation,
+            serializer=self._serialize_consumer_attestation,
         )
 
     def insert_cross_chain_activity_state(
@@ -428,6 +476,66 @@ class ClickHouseClient:
             "model": record.model,
             "adapter": record.adapter,
             "schema_version": record.schema_version,
+            "created_at": ClickHouseClient._format_datetime(record.created_at),
+        }
+
+    @staticmethod
+    def _serialize_watch_prediction(record: WatchPrediction) -> dict[str, Any]:
+        return {
+            "id": record.id or "",
+            "source_signal_id": record.source_signal_id,
+            "source_prediction_id": record.source_prediction_id or "",
+            "signal_type": record.signal_type.value,
+            "asset_scope": record.asset_scope,
+            "chain_scope": record.chain_scope,
+            "claim": record.claim,
+            "probability": record.probability,
+            "realized_direction_expected": record.realized_direction_expected.value,
+            "magnitude_expected": record.magnitude_expected.value,
+            "evaluation_window_hours": record.evaluation_window_hours,
+            "status": record.status.value,
+            "created_by_agent": record.created_by_agent,
+            "model": record.model,
+            "adapter": record.adapter,
+            "schema_version": record.schema_version,
+            "idempotency_key": record.idempotency_key,
+            "created_at": ClickHouseClient._format_datetime(record.created_at),
+        }
+
+    @staticmethod
+    def _serialize_watch_draft(record: WatchDraft) -> dict[str, Any]:
+        return {
+            "id": record.id or "",
+            "watch_prediction_id": record.watch_prediction_id,
+            "headline": record.headline,
+            "analysis": record.analysis,
+            "significance": record.significance,
+            "x_post": record.x_post,
+            "linkedin_draft": record.linkedin_draft,
+            "track_record_snapshot": ClickHouseClient._json_string(record.track_record_snapshot),
+            "routing": ClickHouseClient._json_string(record.routing),
+            "status": record.status.value,
+            "created_by_agent": record.created_by_agent,
+            "model": record.model,
+            "adapter": record.adapter,
+            "schema_version": record.schema_version,
+            "created_at": ClickHouseClient._format_datetime(record.created_at),
+        }
+
+    @staticmethod
+    def _serialize_consumer_attestation(record: ConsumerAttestation) -> dict[str, Any]:
+        return {
+            "id": record.id or "",
+            "watch_prediction_id": record.watch_prediction_id,
+            "consumer_id": record.consumer_id,
+            "acted": int(record.acted),
+            "observed_direction": record.observed_direction.value
+            if record.observed_direction
+            else "",
+            "observed_magnitude": record.observed_magnitude.value
+            if record.observed_magnitude
+            else "",
+            "notes": record.notes,
             "created_at": ClickHouseClient._format_datetime(record.created_at),
         }
 

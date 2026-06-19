@@ -71,5 +71,11 @@ class EdgeStatus(StrEnum):
     CLOSED = "closed"
 
 
+class DraftStatus(StrEnum):
+    DRAFT = "draft"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 def is_known_signal_type(value: str) -> bool:
     return value in {member.value for member in SignalType}
