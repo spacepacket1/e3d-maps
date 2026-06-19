@@ -141,16 +141,16 @@ def test_windowed_context_methods_include_time_bounds():
     assert stablecoin_activity == [{"id": "row_1"}]
     assert captured[0] == (
         "https://api.e3d.ai/api/stories?limit=3"
-        "&time_min=2026-06-08T00%3A00%3A00Z"
-        "&time_max=2026-06-09T00%3A00%3A00Z"
+        "&since=2026-06-08T00%3A00%3A00Z"
+        "&until=2026-06-09T00%3A00%3A00Z"
     )
     assert captured[1] == (
         "https://api.e3d.ai/api/flows/exchange?limit=4"
-        "&time_min=2026-06-08T00%3A00%3A00Z"
-        "&time_max=2026-06-09T00%3A00%3A00Z"
+        "&since=2026-06-08T00%3A00%3A00Z"
+        "&until=2026-06-09T00%3A00%3A00Z"
     )
     assert captured[2] == (
         "https://api.e3d.ai/api/tokens/activity?limit=5"
-        "&time_min=2026-06-08T00%3A00%3A00Z"
-        "&time_max=2026-06-09T00%3A00%3A00Z"
+        "&since=2026-06-08T00%3A00%3A00Z"
+        "&until=2026-06-09T00%3A00%3A00Z"
     )

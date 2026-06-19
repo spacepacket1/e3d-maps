@@ -184,6 +184,6 @@ def test_unsupported_references_are_rejected_and_prompt_contains_guardrails():
     )
 
     assert "stay grounded in provided evidence only" in prompt_text
-    assert "avoid mentioning assets, chains, venues, or bridges that are absent from the input" in prompt_text
+    assert "avoid mentioning assets, chains, venues, or bridges that are absent from the structured context fields" in prompt_text
     assert result.used_fallback is True
     assert "featured signal context" in (result.fallback_reason or "")
