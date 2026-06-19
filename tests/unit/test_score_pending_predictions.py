@@ -105,14 +105,12 @@ def test_score_prediction_excludes_future_and_untimestamped_records():
         created_at=datetime(2026, 6, 9, 0, 0, tzinfo=UTC),
     )
 
-    # Heuristic: no valid evidence in window → 0.1 (no-contradiction bonus only).
-    assert decision.outcome.heuristic_accuracy == pytest.approx(0.1)
-    # Blended accuracy is between heuristic and quantitative; quantitative is
-    # neutral (0.5) with no flows, so blended > heuristic but still low.
+    # Heuristic: no valid evidence in window → 0.5 (neutral, matches quant no-data default).
+    assert decision.outcome.heuristic_accuracy == pytest.approx(0.5)
+    # Both scorers neutral → blended accuracy 0.5, below the 0.6 correct threshold.
     assert decision.outcome.prediction_accuracy < 0.6
     assert decision.outcome.realized_direction is FlowDirection.NEUTRAL
-    # Status may be DISPUTED if the scorers differ enough; either way the
-    # prediction should not be marked correct.
+    # No dispute (both scorers agree at 0.5); outcome is INCORRECT, not correct.
     assert decision.outcome.map_prediction_correct is False
     assert "story_future" not in decision.outcome.notes
     assert "stories=1" in decision.outcome.notes

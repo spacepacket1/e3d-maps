@@ -120,7 +120,7 @@ Return null if:
 
 Return one `NavigationSignal` JSON object with `signal_type: "destination_prediction"`.
 
-Include `route_predictions` when the evidence supports a specific route with a named origin, destination, and expected flow direction. Include one `RoutePrediction` per high-confidence destination route. Link each route prediction back to the same `navigation_signal_id`.
+**Always include a `route_predictions` array.** Every `destination_prediction` signal MUST be accompanied by at least one RoutePrediction for the primary predicted destination. If multiple destinations have evidence, include one RoutePrediction per destination, ordered by confidence descending. Link each route prediction back to the same `navigation_signal_id`. Do not omit `route_predictions` even when there is only one destination to report.
 
 Example output structure:
 

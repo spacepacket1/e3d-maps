@@ -127,7 +127,7 @@ Return null if:
 
 Return one `NavigationSignal` JSON object with `signal_type: "capital_migration"`.
 
-Optionally include one or more `RoutePrediction` objects as a separate key `route_predictions` if the evidence supports a specific predicted route with a named destination and time horizon.
+Whenever your signal identifies both a named `origin` and a named `destination`, include a `route_predictions` array with one RoutePrediction for that route. If the evidence supports multiple distinct destination routes, include one RoutePrediction per route. Do not omit `route_predictions` when origin and destination are both set.
 
 Example output structure:
 

@@ -280,14 +280,18 @@ def _score_hazard_family(
         elif _contains_keyword(text, HAZARD_RECOVERY_KEYWORDS):
             recovery_stories.append(story)
 
-    heuristic_accuracy = 0.0
-    if danger_stories:
-        heuristic_accuracy += HAZARD_WEIGHT_DANGER
-    if recovery_stories:
-        heuristic_accuracy -= HAZARD_PENALTY_RECOVERY
+    if not danger_stories and not recovery_stories:
+        # No matching stories in window — neutral, matches quantitative no-data default.
+        heuristic_accuracy = 0.5
     else:
-        heuristic_accuracy += HAZARD_WEIGHT_NO_RECOVERY
-    heuristic_accuracy = _clamp01(heuristic_accuracy)
+        heuristic_accuracy = 0.0
+        if danger_stories:
+            heuristic_accuracy += HAZARD_WEIGHT_DANGER
+        if recovery_stories:
+            heuristic_accuracy -= HAZARD_PENALTY_RECOVERY
+        else:
+            heuristic_accuracy += HAZARD_WEIGHT_NO_RECOVERY
+        heuristic_accuracy = _clamp01(heuristic_accuracy)
 
     # Quantitative witness: a closing/hazardous route should show capital leaving.
     quant_accuracy = quantitative_score(
@@ -359,14 +363,18 @@ def _score_congestion_family(
         elif _contains_keyword(text, CONGESTION_DISSIPATE_KEYWORDS):
             dissipation_stories.append(story)
 
-    heuristic_accuracy = 0.0
-    if crowding_stories:
-        heuristic_accuracy += CONGESTION_WEIGHT_CROWDING
-    if dissipation_stories:
-        heuristic_accuracy -= CONGESTION_PENALTY_DISSIPATION
+    if not crowding_stories and not dissipation_stories:
+        # No matching stories in window — neutral, matches quantitative no-data default.
+        heuristic_accuracy = 0.5
     else:
-        heuristic_accuracy += CONGESTION_WEIGHT_NO_DISSIPATION
-    heuristic_accuracy = _clamp01(heuristic_accuracy)
+        heuristic_accuracy = 0.0
+        if crowding_stories:
+            heuristic_accuracy += CONGESTION_WEIGHT_CROWDING
+        if dissipation_stories:
+            heuristic_accuracy -= CONGESTION_PENALTY_DISSIPATION
+        else:
+            heuristic_accuracy += CONGESTION_WEIGHT_NO_DISSIPATION
+        heuristic_accuracy = _clamp01(heuristic_accuracy)
 
     # Quantitative witness: did meaningful activity around the zone persist?
     active_records = 0
@@ -485,10 +493,11 @@ def run(
         decision = score_prediction(
             signal=signal,
             route_predictions=routes_by_signal.get(signal_id, ()),
-            stories=e3d_client.get_stories_within_window(
-                start_time=window_start,
-                end_time=window_end,
-                max_items=context_limit,
+            stories=_list_stories_from_ch(
+                clickhouse_reader,
+                window_start=window_start,
+                window_end=window_end,
+                limit=context_limit,
             ),
             exchange_flows=e3d_client.get_exchange_flows_within_window(
                 start_time=window_start,
@@ -528,6 +537,42 @@ def main(argv: Sequence[str] | None = None) -> int:
         dry_run=args.dry_run,
     )
     return 0 if inserted >= 0 else 1
+
+
+def _list_stories_from_ch(
+    reader: ClickHouseReadClient,
+    *,
+    window_start: datetime,
+    window_end: datetime,
+    limit: int,
+) -> list[dict[str, Any]]:
+    """Fetch stories from ClickHouse for a historical evaluation window.
+
+    The E3D API only returns live/recent stories, so historical scoring must
+    query the Stories table directly. Fields are mapped to match what
+    _record_text() and _story_relation() expect.
+    """
+    start_str = window_start.strftime("%Y-%m-%d %H:%M:%S")
+    end_str = window_end.strftime("%Y-%m-%d %H:%M:%S")
+    rows = reader.select(
+        "SELECT id, ts_created, story_type, chain, primary_token, title, subtitle "
+        f"FROM Stories "
+        f"WHERE ts_created > '{start_str}' AND ts_created <= '{end_str}' "
+        f"ORDER BY ts_created ASC "
+        f"LIMIT {max(0, limit)} FORMAT JSONEachRow"
+    )
+    return [
+        {
+            "id": row.get("id", ""),
+            "ts_created": row.get("ts_created", ""),
+            "story_type": row.get("story_type", ""),
+            "chain": row.get("chain", ""),
+            "title": row.get("title", ""),
+            "summary": row.get("subtitle") or "",
+            "asset_symbol": row.get("primary_token") or "",
+        }
+        for row in rows
+    ]
 
 
 def _list_pending_signals(reader: ClickHouseReadClient, *, limit: int) -> list[NavigationSignal]:
@@ -660,6 +705,21 @@ def _collect_evidence(
 
 
 def _score_accuracy(evidence: EvidenceBucket) -> float:
+    has_support = bool(
+        evidence.supporting_stories
+        or evidence.supporting_exchange_flows
+        or evidence.supporting_stablecoin_activity
+    )
+    has_contradiction = bool(
+        evidence.contradicting_stories
+        or evidence.contradicting_exchange_flows
+        or evidence.contradicting_stablecoin_activity
+    )
+    if not has_support and not has_contradiction:
+        # No evidence found in window — return neutral to match the quantitative
+        # scorer's 0.5 no-data default and avoid spurious disputes.
+        return 0.5
+
     score = 0.0
     contradiction_count = 0
 
