@@ -184,6 +184,23 @@ def get_maps_predictions(
     return RouteResponse(status_code=200, body=_paginated_body(key="predictions", result=result))
 
 
+def get_maps_notable(
+    service: MapsAPIService,
+    *,
+    min_score: int = 0,
+    since: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> RouteResponse:
+    result = service.get_notable_signals(
+        min_score=min_score,
+        since=since,
+        limit=limit,
+        offset=offset,
+    )
+    return RouteResponse(status_code=200, body=_paginated_body(key="notable", result=result))
+
+
 def get_maps_destinations(
     service: MapsAPIService,
     *,
@@ -219,7 +236,7 @@ def get_maps_calibration(
 def _paginated_body(*, key: str, result: PaginatedResult[Any]) -> dict[str, Any]:
     return {
         "status": "ok",
-        key: [model_to_dict(item) for item in result.items],
+        key: [item if isinstance(item, dict) else model_to_dict(item) for item in result.items],
         "pagination": {
             "limit": result.limit,
             "offset": result.offset,

@@ -154,6 +154,69 @@ class MapsAPIService:
             return None
         return normalize_navigation_signal_row(rows[0])
 
+    def get_notable_signals(
+        self,
+        *,
+        min_score: int = 0,
+        since: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> PaginatedResult[dict[str, Any]]:
+        """Return recent navigation signals joined to their latest utility score,
+        ranked by a server-side ``notability`` score.
+
+        ``notability = round(100 * final_signal_utility_score)`` when a utility
+        score exists, otherwise ``round(100 * confidence)``. Clients only
+        threshold-filter via ``min_score``.
+        """
+        bounded_limit = self._normalize_limit(limit)
+        bounded_offset = self._normalize_offset(offset)
+
+        filters = [f"notability >= {max(0, int(min_score))}"]
+        if since:
+            filters.append(f"created_at > {self._sql_string(since)}")
+        where_clause = "WHERE " + " AND ".join(filters)
+
+        sql = f"""
+        SELECT *
+        FROM
+        (
+            SELECT
+                ns.id           AS signal_id,
+                ns.signal_type  AS signal_type,
+                ns.asset_scope  AS asset_scope,
+                ns.chain_scope  AS chain_scope,
+                ns.confidence   AS confidence,
+                ns.question     AS question,
+                ns.answer       AS answer,
+                ns.created_at   AS created_at,
+                round(100 * if(sus.score_count > 0, sus.utility, ns.confidence)) AS notability
+            FROM NavigationSignals ns
+            LEFT JOIN
+            (
+                SELECT
+                    navigation_signal_id,
+                    argMax(final_signal_utility_score, created_at) AS utility,
+                    count() AS score_count
+                FROM SignalUtilityScores
+                GROUP BY navigation_signal_id
+            ) sus ON sus.navigation_signal_id = ns.id
+        )
+        {where_clause}
+        ORDER BY notability DESC, created_at DESC, signal_id DESC
+        LIMIT {bounded_limit + 1} OFFSET {bounded_offset}
+        FORMAT JSONEachRow
+        """
+        rows = self._query_rows(sql)
+        has_more = len(rows) > bounded_limit
+        items = tuple(_normalize_notable_row(row) for row in rows[:bounded_limit])
+        return PaginatedResult(
+            items=items,
+            limit=bounded_limit,
+            offset=bounded_offset,
+            has_more=has_more,
+        )
+
     def list_routes(self, *, limit: int = 50, offset: int = 0) -> PaginatedResult[RoutePrediction]:
         return self._list_rows(
             table_sql="""
@@ -561,6 +624,20 @@ class MapsAPIService:
     def _sql_float(value: float) -> str:
         bounded = max(0.0, min(float(value), 1.0))
         return format(bounded, "g")
+
+
+def _normalize_notable_row(row: dict[str, Any]) -> dict[str, Any]:
+    summary = row.get("answer") or row.get("question") or ""
+    return {
+        "signal_id": row.get("signal_id") or "",
+        "signal_type": row.get("signal_type") or "",
+        "asset_scope": list(row.get("asset_scope") or []),
+        "chain_scope": list(row.get("chain_scope") or []),
+        "confidence": float(row.get("confidence") or 0.0),
+        "notability": int(row.get("notability") or 0),
+        "created_at": row.get("created_at") or "",
+        "summary": summary,
+    }
 
 
 # ── FlowGraph response builders ───────────────────────────────────────────────

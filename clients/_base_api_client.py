@@ -42,8 +42,7 @@ class BaseE3DReadClient:
     ) -> Any:
         url = self._build_url(path=path, query=query)
         headers = {"Accept": "application/json"}
-        if self.api_key:
-            headers["x-api-key"] = self.api_key
+        headers.update(self._auth_headers())
 
         request = Request(url=url, headers=headers, method="GET")
         attempts = max(1, self.max_retries + 1)
@@ -73,6 +72,17 @@ class BaseE3DReadClient:
                 time.sleep(self.retry_backoff_seconds * (attempt + 1))
 
         raise E3DAPIClientError("E3D API request failed after retries") from last_error
+
+    def _auth_headers(self) -> dict[str, str]:
+        """Return auth headers for outbound requests.
+
+        Defaults to the E3D internal ``x-api-key`` scheme; subclasses (e.g. the
+        public-contract ``WatchFeedClient``) override this to send
+        ``Authorization: Bearer``.
+        """
+        if self.api_key:
+            return {"x-api-key": self.api_key}
+        return {}
 
     def _build_url(self, *, path: str, query: Mapping[str, Any] | None) -> str:
         full_path = f"{self.api_prefix}{self._normalize_path(path)}"
