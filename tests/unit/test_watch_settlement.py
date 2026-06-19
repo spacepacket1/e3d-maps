@@ -13,7 +13,7 @@ from jobs.settle_watch_predictions import (
 )
 from schemas.consumer_attestation import ConsumerAttestation
 from schemas.navigation_signal import NavigationSignal
-from schemas.shared_enums import OutcomeStatus
+from schemas.shared_enums import FlowDirection, OutcomeStatus
 from schemas.watch_prediction import WatchPrediction
 from services.maps_api_service import MapsAPIService
 from tests.unit.payloads import navigation_signal_payload
@@ -92,6 +92,38 @@ def test_settlement_produces_a_linked_outcome_over_prediction_window():
     assert outcome.evaluation_window_hours == 24
     assert 0.0 <= outcome.prediction_accuracy <= 1.0
     assert decision.status in set(OutcomeStatus)
+
+
+def test_settlement_grades_the_watch_claim_direction_not_the_source_signal():
+    # On-chain evidence shows inflow into ETH_DEFI. A claim of inflow should be
+    # graded better-supported than a claim of outflow against the same evidence,
+    # proving the grading follows the watch claim, not the source signal.
+    inflow_evidence = [
+        {
+            "direction": "inflow",
+            "net_flow": 5_000_000.0,
+            "destination": "ETH_DEFI",
+            "magnitude": "high",
+            "timestamp": (PRED_CREATED + timedelta(hours=1)).isoformat(),
+        }
+    ]
+
+    def _settle(direction: str):
+        return settle_watch_prediction(
+            prediction=_prediction(realized_direction_expected=direction),
+            source_signal=_source_signal(),
+            stories=[_SUPPORTING_STORY],
+            exchange_flows=inflow_evidence,
+            stablecoin_activity=[],
+            attestations=[],
+            now=AFTER_WINDOW,
+        ).outcome
+
+    inflow = _settle("inflow")
+    outflow = _settle("outflow")
+
+    assert inflow.prediction_accuracy > outflow.prediction_accuracy
+    assert inflow.realized_direction == FlowDirection.INFLOW
 
 
 def test_consumer_exposure_counts_acted_attestations_before_window_close():

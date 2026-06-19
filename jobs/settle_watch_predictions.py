@@ -15,6 +15,7 @@ from jobs.score_pending_predictions import (
 )
 from schemas.consumer_attestation import ConsumerAttestation
 from schemas.navigation_signal import NavigationSignal
+from schemas.route_prediction import RoutePrediction
 from schemas.watch_prediction import WatchPrediction
 from settings import MapsRunnerSettings
 
@@ -58,8 +59,13 @@ def settle_watch_prediction(
 
     Reuses ``score_prediction`` against on-chain ground truth. The outcome is
     tied to the source signal (``navigation_signal_id = source_signal_id``) but
-    evaluated over the *prediction's* window. ``consumer_exposure`` is counted
-    from attestations, and the exogenous/induced split is populated from it.
+    evaluated over the *prediction's* window and graded against the *watch
+    prediction's own* expected direction/magnitude — not the source signal's —
+    so the public track record honestly reflects the Watch Agent's calls and the
+    distill labels pair each claim with its realized outcome. We grade the claim
+    by feeding it through the scorer's existing route-prediction seam rather than
+    modifying the scorer. ``consumer_exposure`` is counted from attestations, and
+    the exogenous/induced split is populated from it.
     """
     scored_at = _utcnow() if now is None else _to_utc(now)
     window_end = _to_utc(prediction.created_at) + timedelta(
@@ -80,7 +86,7 @@ def settle_watch_prediction(
 
     decision = score_prediction(
         signal=scoring_signal,
-        route_predictions=(),
+        route_predictions=(_synthesize_claim_route(prediction, scoring_signal),),
         stories=stories,
         exchange_flows=exchange_flows,
         stablecoin_activity=stablecoin_activity,
@@ -98,6 +104,37 @@ def settle_watch_prediction(
         }
     )
     return OutcomeDecision(outcome=outcome, status=decision.status)
+
+
+def _synthesize_claim_route(
+    prediction: WatchPrediction,
+    source_signal: NavigationSignal,
+) -> RoutePrediction:
+    """A throwaway RoutePrediction encoding the watch claim's expected direction.
+
+    The flow-family scorer derives its predicted direction from a route
+    prediction, so passing this routes the existing machinery to grade the watch
+    prediction's own claim. Its ``id`` is None so it never appears as the
+    outcome's ``route_prediction_id``.
+    """
+    origin = source_signal.origin or (
+        prediction.chain_scope[0] if prediction.chain_scope else "unknown"
+    )
+    destination = source_signal.destination or (
+        prediction.asset_scope[0] if prediction.asset_scope else origin
+    )
+    return RoutePrediction(
+        id=None,
+        navigation_signal_id=prediction.source_signal_id,
+        route_type=prediction.signal_type.value,
+        origin=origin,
+        destination=destination,
+        expected_flow_direction=prediction.realized_direction_expected,
+        expected_flow_magnitude=prediction.magnitude_expected,
+        time_horizon_hours=prediction.evaluation_window_hours,
+        confidence=prediction.probability,
+        created_at=prediction.created_at,
+    )
 
 
 # ── job entrypoint ──────────────────────────────────────────────────────────────
