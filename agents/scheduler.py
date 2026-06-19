@@ -54,6 +54,7 @@ class MapsJobScheduler:
     DEFAULT_TRAFFIC_STATE_INTERVAL = 300
     DEFAULT_CROSS_CHAIN_ACTIVITY_INTERVAL = 300
     DEFAULT_MAPS_NEWS_INTERVAL = 300
+    DEFAULT_WATCH_INTERVAL = 300
     DEFAULT_TICK_SECONDS = 60
 
     def __init__(
@@ -105,6 +106,7 @@ class MapsJobScheduler:
         traffic_state_fn: Callable[[], None] | None = None,
         cross_chain_activity_fn: Callable[[], None] | None = None,
         maps_news_fn: Callable[[], None] | None = None,
+        watch_fn: Callable[[], None] | None = None,
         signals_interval: int = DEFAULT_SIGNALS_INTERVAL,
         scoring_interval: int = DEFAULT_SCORING_INTERVAL,
         utility_interval: int = DEFAULT_UTILITY_INTERVAL,
@@ -113,6 +115,7 @@ class MapsJobScheduler:
         traffic_state_interval: int = DEFAULT_TRAFFIC_STATE_INTERVAL,
         cross_chain_activity_interval: int = DEFAULT_CROSS_CHAIN_ACTIVITY_INTERVAL,
         maps_news_interval: int = DEFAULT_MAPS_NEWS_INTERVAL,
+        watch_interval: int = DEFAULT_WATCH_INTERVAL,
         tick_seconds: int = DEFAULT_TICK_SECONDS,
         sleep_fn: Callable[[float], None] = time.sleep,
         now_fn: Callable[[], float] = time.time,
@@ -180,6 +183,14 @@ class MapsJobScheduler:
                     interval_seconds=maps_news_interval,
                 )
             )
+        if watch_fn is not None:
+            jobs.append(
+                JobConfig(
+                    name="run_watch_agent",
+                    run_fn=watch_fn,
+                    interval_seconds=watch_interval,
+                )
+            )
         return cls(jobs=jobs, tick_seconds=tick_seconds, sleep_fn=sleep_fn, now_fn=now_fn)
 
 
@@ -202,6 +213,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     import jobs.assemble_traffic_state as traffic_state_mod
     import jobs.assemble_cross_chain_activity as cross_chain_mod
     import jobs.generate_maps_news as maps_news_mod
+    import jobs.run_watch_agent as watch_mod
     from agents.runner import MapsRunner
     from agents.qwen_orchestrator import QwenOrchestrator
     from settings import MapsRuntimeSettings, MapsRunnerSettings
@@ -228,6 +240,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         traffic_state_fn=lambda: traffic_state_mod.run(dry_run=dry_run),
         cross_chain_activity_fn=lambda: cross_chain_mod.run(dry_run=dry_run),
         maps_news_fn=lambda: maps_news_mod.run(dry_run=dry_run),
+        watch_fn=lambda: watch_mod.run(dry_run=dry_run),
         signals_interval=runner_settings.run_interval_seconds,
         scoring_interval=runner_settings.scoring_interval_seconds,
         utility_interval=runner_settings.utility_interval_seconds,
@@ -236,6 +249,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         traffic_state_interval=runner_settings.traffic_state_interval_seconds,
         cross_chain_activity_interval=runner_settings.cross_chain_activity_interval_seconds,
         maps_news_interval=runner_settings.maps_news_interval_seconds,
+        watch_interval=runner_settings.watch_interval_seconds,
         tick_seconds=runner_settings.scheduler_tick_seconds,
     )
 

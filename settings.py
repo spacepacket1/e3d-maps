@@ -74,10 +74,13 @@ class MapsRunnerSettings:
     traffic_state_interval_seconds: int = 300
     cross_chain_activity_interval_seconds: int = 300
     maps_news_interval_seconds: int = 300
+    watch_interval_seconds: int = 300
     scheduler_tick_seconds: int = 60
     use_sample_context: bool = False
     use_sample_responses: bool = False
     min_signal_confidence: float = 0.5
+    min_event_score: int = 60
+    maps_public_api_base: str = "https://e3d.ai"
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> "MapsRunnerSettings":
@@ -105,8 +108,13 @@ class MapsRunnerSettings:
                 env.get("MAPS_CROSS_CHAIN_ACTIVITY_INTERVAL_SECONDS") or 300
             ),
             maps_news_interval_seconds=int(env.get("MAPS_NEWS_INTERVAL_SECONDS") or 300),
+            watch_interval_seconds=int(env.get("WATCH_INTERVAL_SECONDS") or 300),
             scheduler_tick_seconds=int(env.get("MAPS_SCHEDULER_TICK_SECONDS") or 60),
             use_sample_context=_parse_bool(env.get("MAPS_RUNNER_USE_SAMPLE_CONTEXT")),
             use_sample_responses=_parse_bool(env.get("MAPS_RUNNER_USE_SAMPLE_RESPONSES")),
             min_signal_confidence=float(env.get("MAPS_MIN_SIGNAL_CONFIDENCE") or 0.5),
+            min_event_score=int(env.get("MIN_EVENT_SCORE") or 60),
+            maps_public_api_base=(
+                env.get("MAPS_PUBLIC_API_BASE") or env.get("E3D_BASE_URL") or "https://e3d.ai"
+            ).rstrip("/"),
         )
