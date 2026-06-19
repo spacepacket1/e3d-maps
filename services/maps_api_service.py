@@ -14,6 +14,8 @@ from api.normalizers import (
     normalize_route_prediction_row,
     normalize_story_type_definition_row,
     normalize_traffic_state_row,
+    normalize_watch_draft_row,
+    normalize_watch_prediction_row,
 )
 from schemas.consumer_attestation import ConsumerAttestation
 from schemas.cross_chain_activity_state import CrossChainActivityState
@@ -24,6 +26,8 @@ from schemas.recommendation import Recommendation
 from schemas.route_prediction import RoutePrediction
 from schemas.story_type_definition import StoryTypeDefinition
 from schemas.traffic_state import TrafficState
+from schemas.watch_draft import WatchDraft
+from schemas.watch_prediction import WatchPrediction
 from services.recommendation_engine import STORY_TYPE_SIGNAL_TYPES, synthesize_recommendations
 
 T = TypeVar("T")
@@ -575,6 +579,54 @@ class MapsAPIService:
         if not rows:
             return None
         return normalize_story_type_definition_row(rows[0])
+
+    def list_watch_drafts(
+        self, *, limit: int = 50, offset: int = 0
+    ) -> PaginatedResult[WatchDraft]:
+        return self._list_rows(
+            table_sql="""
+            SELECT *
+            FROM WatchDrafts
+            {where_clause}
+            ORDER BY created_at DESC, id DESC
+            {limit_clause}
+            FORMAT JSONEachRow
+            """,
+            filters=[],
+            limit=limit,
+            offset=offset,
+            normalizer=normalize_watch_draft_row,
+        )
+
+    def get_watch_draft(self, draft_id: str) -> WatchDraft | None:
+        rows = self._query_rows(
+            f"""
+            SELECT *
+            FROM WatchDrafts
+            WHERE id = {self._sql_string(draft_id)}
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            FORMAT JSONEachRow
+            """
+        )
+        if not rows:
+            return None
+        return normalize_watch_draft_row(rows[0])
+
+    def get_watch_prediction(self, prediction_id: str) -> WatchPrediction | None:
+        rows = self._query_rows(
+            f"""
+            SELECT *
+            FROM WatchPredictions
+            WHERE id = {self._sql_string(prediction_id)}
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            FORMAT JSONEachRow
+            """
+        )
+        if not rows:
+            return None
+        return normalize_watch_prediction_row(rows[0])
 
     def _list_rows(
         self,

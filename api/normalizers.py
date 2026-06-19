@@ -12,6 +12,8 @@ from schemas.route_prediction import RoutePrediction
 from schemas.signal_utility_score import SignalUtilityScore
 from schemas.story_type_definition import StoryTypeDefinition
 from schemas.traffic_state import TrafficState
+from schemas.watch_draft import WatchDraft
+from schemas.watch_prediction import WatchPrediction
 
 
 def normalize_navigation_signal_row(row: dict[str, Any]) -> NavigationSignal:
@@ -191,6 +193,56 @@ def normalize_story_type_definition_row(row: dict[str, Any]) -> StoryTypeDefinit
     return StoryTypeDefinition.model_validate(payload, context={"allow_unknown_signal_types": True})
 
 
+def normalize_watch_draft_row(row: dict[str, Any]) -> WatchDraft:
+    payload = {
+        "id": row.get("id") or None,
+        "watch_prediction_id": row["watch_prediction_id"],
+        "headline": row["headline"],
+        "analysis": row["analysis"],
+        "significance": row["significance"],
+        "x_post": row["x_post"],
+        "linkedin_draft": row["linkedin_draft"],
+        "track_record_snapshot": _json_object_or_empty(row.get("track_record_snapshot")),
+        "routing": _json_object_or_empty(row.get("routing")),
+        "status": row.get("status") or "draft",
+        "created_by_agent": row.get("created_by_agent") or "watch_draft_generator",
+        "model": row.get("model") or "",
+        "adapter": row.get("adapter") or "",
+        "schema_version": row.get("schema_version") or "",
+        "created_at": _parse_datetime(row["created_at"]),
+    }
+    return WatchDraft.model_validate(payload)
+
+
+def normalize_watch_prediction_row(row: dict[str, Any]) -> WatchPrediction:
+    source_prediction_id = row.get("source_prediction_id")
+    if source_prediction_id == "":
+        source_prediction_id = None
+    # Drop inserted_at if present — not part of the schema
+    row_clean = {k: v for k, v in row.items() if k != "inserted_at"}
+    payload = {
+        "id": row_clean.get("id") or None,
+        "source_signal_id": row_clean["source_signal_id"],
+        "source_prediction_id": source_prediction_id,
+        "signal_type": row_clean["signal_type"],
+        "asset_scope": _string_list(row_clean.get("asset_scope")),
+        "chain_scope": _string_list(row_clean.get("chain_scope")),
+        "claim": row_clean["claim"],
+        "probability": float(row_clean["probability"]),
+        "realized_direction_expected": row_clean["realized_direction_expected"],
+        "magnitude_expected": row_clean["magnitude_expected"],
+        "evaluation_window_hours": int(row_clean["evaluation_window_hours"]),
+        "status": row_clean.get("status") or "pending",
+        "created_by_agent": row_clean.get("created_by_agent") or "watch_agent",
+        "model": row_clean.get("model") or "",
+        "adapter": row_clean.get("adapter") or "",
+        "schema_version": row_clean.get("schema_version") or "",
+        "idempotency_key": row_clean["idempotency_key"],
+        "created_at": _parse_datetime(row_clean["created_at"]),
+    }
+    return WatchPrediction.model_validate(payload)
+
+
 def _json_array(value: Any) -> list[Any]:
     parsed = _json_value(value)
     if parsed is None:
@@ -198,6 +250,15 @@ def _json_array(value: Any) -> list[Any]:
     if isinstance(parsed, list):
         return parsed
     raise ValueError("Expected JSON array payload.")
+
+
+def _json_object_or_empty(value: Any) -> dict[str, Any]:
+    parsed = _json_value(value)
+    if parsed is None:
+        return {}
+    if isinstance(parsed, dict):
+        return parsed
+    raise ValueError("Expected JSON object payload.")
 
 
 def _json_object_or_none(value: Any) -> dict[str, Any] | None:

@@ -254,6 +254,58 @@ def post_maps_outcome(service: MapsAPIService, payload: dict[str, Any]) -> Route
     )
 
 
+def get_agent_drafts(
+    service: MapsAPIService,
+    *,
+    limit: int = 50,
+    offset: int = 0,
+) -> RouteResponse:
+    """List watch drafts newest-first.
+
+    Corresponds to GET /api/agents/drafts — matching Express route in the main
+    e3d server is a deferred cross-repo step (mirror of get_maps_notable /
+    post_maps_outcome pattern).
+    """
+    result = service.list_watch_drafts(limit=limit, offset=offset)
+    return RouteResponse(status_code=200, body=_paginated_body(key="drafts", result=result))
+
+
+def get_agent_draft(service: MapsAPIService, draft_id: str) -> RouteResponse:
+    """Return a single WatchDraft by id.
+
+    Corresponds to GET /api/agents/drafts/:id — matching Express route in the
+    main e3d server is a deferred cross-repo step.
+    """
+    draft = service.get_watch_draft(draft_id)
+    if draft is None:
+        return RouteResponse(
+            status_code=404,
+            body={"status": "not_found", "error": "draft_not_found"},
+        )
+    return RouteResponse(
+        status_code=200,
+        body={"status": "ok", "draft": model_to_dict(draft)},
+    )
+
+
+def get_agent_prediction(service: MapsAPIService, prediction_id: str) -> RouteResponse:
+    """Return a single WatchPrediction by id.
+
+    Corresponds to GET /api/agents/predictions/:id — matching Express route in
+    the main e3d server is a deferred cross-repo step.
+    """
+    prediction = service.get_watch_prediction(prediction_id)
+    if prediction is None:
+        return RouteResponse(
+            status_code=404,
+            body={"status": "not_found", "error": "prediction_not_found"},
+        )
+    return RouteResponse(
+        status_code=200,
+        body={"status": "ok", "prediction": model_to_dict(prediction)},
+    )
+
+
 def _paginated_body(*, key: str, result: PaginatedResult[Any]) -> dict[str, Any]:
     return {
         "status": "ok",
