@@ -10,6 +10,7 @@ export const navigationItems = [
 
 export const headerLinks = [
   { href: "/whitepaper", label: "Whitepaper" },
+  { href: "/architecture", label: "Architecture" },
   { href: "/docs", label: "Docs" },
   { href: "/api-docs", label: "API" },
 ];
@@ -26,6 +27,7 @@ const routeDefinitions = [
   { id: "calibration", path: "/calibration" },
   { id: "story-types", path: "/story-types" },
   { id: "whitepaper", path: "/whitepaper" },
+  { id: "architecture", path: "/architecture" },
   { id: "docs", path: "/docs" },
   { id: "api-docs", path: "/api-docs" },
 ];

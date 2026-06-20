@@ -1,0 +1,943 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>E3D Ecosystem Architecture — The Navigation-to-Execution Stack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg:          #f3efe7;
+      --surface:     #fdfaf4;
+      --border:      rgba(61, 45, 30, 0.13);
+      --text:        #1c1410;
+      --muted:       #6a5e52;
+      --accent:      #0a7f68;
+      --accent-soft: rgba(10, 127, 104, 0.10);
+      --warn:        #8d5e12;
+      --shadow:      0 28px 64px rgba(69, 54, 38, 0.09);
+      --serif:       "Playfair Display", Georgia, "Times New Roman", serif;
+      --sans:        "Inter", system-ui, -apple-system, sans-serif;
+      --mono:        "Menlo", "Monaco", "Cascadia Code", monospace;
+      --max:         720px;
+      --page-pad:    clamp(24px, 5vw, 80px);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+
+    body {
+      font-family: var(--sans);
+      font-size: 1rem;
+      line-height: 1.75;
+      color: var(--text);
+      background: var(--bg);
+      padding: 0 var(--page-pad) 100px;
+    }
+
+    .wp {
+      max-width: var(--max);
+      margin: 0 auto;
+    }
+
+    .hero {
+      padding: 80px 0 64px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 72px;
+    }
+    .eyebrow {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      font-family: var(--serif);
+      font-size: clamp(1.4rem, 3vw, 1.9rem);
+      line-height: 1.18;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 24px;
+    }
+    .lead {
+      font-size: 1.15rem;
+      line-height: 1.7;
+      color: var(--muted);
+      max-width: 620px;
+      margin-bottom: 32px;
+    }
+    .meta {
+      display: flex;
+      gap: 12px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+    .meta-sep { opacity: 0.35; }
+
+    .section { margin-bottom: 72px; }
+    .section-header { margin-bottom: 28px; }
+    .section h2 {
+      font-family: var(--serif);
+      font-size: clamp(1.35rem, 3vw, 1.9rem);
+      font-weight: 700;
+      line-height: 1.25;
+      color: var(--text);
+      margin-top: 8px;
+    }
+    .section h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 28px 0 10px;
+    }
+    .section p {
+      margin-bottom: 18px;
+      color: var(--text);
+    }
+    .section p:last-child { margin-bottom: 0; }
+
+    blockquote {
+      border-left: 3px solid var(--accent);
+      margin: 36px 0;
+      padding: 20px 0 20px 28px;
+    }
+    blockquote p {
+      font-family: var(--serif);
+      font-size: 1.15rem;
+      font-style: italic;
+      line-height: 1.55;
+      color: var(--text);
+      margin-bottom: 10px !important;
+    }
+    blockquote cite {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      font-style: normal;
+    }
+
+    .callout {
+      background: var(--accent-soft);
+      border: 1px solid rgba(10, 127, 104, 0.18);
+      border-radius: 10px;
+      padding: 24px 28px;
+      margin: 32px 0;
+    }
+    .callout p { color: #0b5446; font-size: 0.95rem; }
+
+    .insight {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px 32px;
+      margin: 32px 0;
+      box-shadow: var(--shadow);
+    }
+    .insight h4 {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    .insight p { font-size: 0.95rem; margin-bottom: 14px; }
+    .insight p:last-child { margin-bottom: 0; }
+
+    /* Stage stack diagram */
+    .stage-stack {
+      margin: 40px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .stage {
+      padding: 20px 24px;
+      border: 1px solid var(--border);
+      position: relative;
+    }
+    .stage:first-child { border-radius: 10px 10px 0 0; }
+    .stage:last-child  { border-radius: 0 0 10px 10px; }
+    .stage + .stage { border-top: none; }
+    .stage-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .stage-name {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 4px;
+    }
+    .stage-desc { font-size: 0.85rem; color: var(--muted); }
+    .stage-tag {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.72rem;
+      font-family: var(--mono);
+      color: var(--muted);
+      opacity: 0.7;
+    }
+
+    .stage-action  { background: #e8f2fa; border-color: #b5cfe8; }
+    .stage-action  .stage-label { color: #185FA5; }
+    .stage-action  .stage-name  { color: #0c3d70; }
+
+    .stage-nav     { background: #e6f5ef; border-color: #9fd8c0; }
+    .stage-nav     .stage-label { color: #0F6E56; }
+    .stage-nav     .stage-name  { color: #074d39; }
+
+    .stage-core    { background: #eeedfd; border-color: #c5c1ef; }
+    .stage-core    .stage-label { color: #534AB7; }
+    .stage-core    .stage-name  { color: #3c3489; }
+
+    .stage-token   { background: #faeee7; border-color: #f0bfa0; }
+    .stage-token   .stage-label { color: #993C1D; }
+    .stage-token   .stage-name  { color: #6b2811; }
+
+    /* Agent table */
+    .agent-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 28px 0;
+      font-size: 0.88rem;
+    }
+    .agent-table th {
+      text-align: left;
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .agent-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+      color: var(--text);
+    }
+    .agent-table tr:last-child td { border-bottom: none; }
+    .agent-name { font-weight: 600; font-family: var(--mono); font-size: 0.82rem; color: var(--accent); }
+
+    /* Flywheel */
+    .flywheel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px 36px;
+      margin: 36px 0;
+    }
+    .flywheel h4 {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+    .flywheel-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    .flywheel-arrow { color: var(--accent); font-size: 1.1rem; line-height: 1.5; flex-shrink: 0; width: 20px; }
+    .flywheel-text  { font-size: 0.9rem; color: var(--text); line-height: 1.5; }
+    .flywheel-text em { color: var(--muted); font-style: normal; font-size: 0.82rem; }
+
+    /* Principle list */
+    .principles {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 28px 0;
+    }
+    .principle {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+    }
+    .principle-icon { color: var(--accent); font-size: 1rem; flex-shrink: 0; margin-top: 2px; }
+    .principle-text { font-size: 0.88rem; color: var(--text); }
+    .principle-text strong { color: var(--text); font-weight: 600; }
+
+    /* Infra row */
+    .infra-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .infra-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 0.82rem;
+      color: var(--text);
+    }
+    .infra-chip strong { color: var(--accent); display: block; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 2px; }
+
+    /* CTA footer */
+    .cta-section {
+      padding-top: 56px;
+      border-top: 1px solid var(--border);
+      margin-top: 80px;
+    }
+    .cta-section h2 {
+      font-family: var(--serif);
+      font-size: 1.6rem;
+      margin-bottom: 32px;
+    }
+    .cta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+    }
+    .cta-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 22px;
+    }
+    .cta-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .cta-url {
+      display: block;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--accent);
+      margin-bottom: 8px;
+      word-break: break-all;
+    }
+    .cta-desc { font-size: 0.82rem; color: var(--muted); }
+
+    .closing {
+      text-align: center;
+      padding: 64px 0 0;
+      font-family: var(--serif);
+      font-size: 1.5rem;
+      font-style: italic;
+      color: var(--muted);
+    }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.85em;
+      background: rgba(61, 45, 30, 0.07);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    @media print {
+      :root { --page-pad: 0; }
+      body { background: #fff; padding: 0; }
+      .stage { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+<article class="wp">
+
+  <!-- ── Hero ─────────────────────────────────────────────────────── -->
+  <div class="hero">
+    <p class="eyebrow">System Architecture · June 2026</p>
+    <h1>The E3D Ecosystem —<br>A Navigation-to-Execution Stack for On-Chain Markets</h1>
+    <p class="lead">
+      E3D is a starship. It is assembled from the bottom up and it flies from the bottom up.
+      Fuel is forged on-chain, ignited into intelligence, focused into guidance, and spent at
+      the command tip where decisions are made. Spent fuel is not wasted — the exhaust is
+      recaptured as training signal, and the vehicle climbs a little smarter on every burn.
+    </p>
+    <div class="meta">
+      <span>E3D Platform</span>
+      <span class="meta-sep">·</span>
+      <span>Four repositories, one closed loop</span>
+      <span class="meta-sep">·</span>
+      <span>maps.e3d.ai</span>
+    </div>
+  </div>
+
+  <!-- ── 1. The Stack ──────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">Overview</p>
+      <h2>Four Stages, One Vehicle</h2>
+    </div>
+
+    <p>
+      E3D turns raw on-chain evidence into autonomous, accountable action — and then learns from
+      the result. It is not a single application but a layered stack of four independent
+      repositories, each a stage of the same vehicle, bolted together not by shared code but by
+      shared contracts.
+    </p>
+
+    <p>
+      The animating thesis is simple and unfashionable: <strong>on-chain story signals fire
+      <em>before</em> price moves.</strong> Patterns in wallet behavior, token flows, and market
+      microstructure precede the candle. E3D is built to be a telescope pointed at the pre-pump
+      window — not a rear-view mirror reacting to moves already in progress.
+    </p>
+
+    <div class="stage-stack">
+      <div class="stage stage-action">
+        <div class="stage-label">🎯 Command tip</div>
+        <div class="stage-name">e3d-agent-trading-floor</div>
+        <div class="stage-desc">Five-agent pipeline — the only stage permitted to act</div>
+        <div class="stage-tag">Node.js</div>
+      </div>
+      <div class="stage stage-nav">
+        <div class="stage-label">🧭 Guidance</div>
+        <div class="stage-name">e3d-maps</div>
+        <div class="stage-desc">Navigation intelligence — the prediction swarm</div>
+        <div class="stage-tag">Python</div>
+      </div>
+      <div class="stage stage-core">
+        <div class="stage-label">🛰 Core stage</div>
+        <div class="stage-name">spacepacket / E3D.ai</div>
+        <div class="stage-desc">Data and intelligence hub — ingest, understand, serve</div>
+        <div class="stage-tag">Node.js</div>
+      </div>
+      <div class="stage stage-token">
+        <div class="stage-label">🚀 Engines</div>
+        <div class="stage-name">E3DToken</div>
+        <div class="stage-desc">On-chain economic substrate — the canonical asset</div>
+        <div class="stage-tag">Solidity · TypeScript</div>
+      </div>
+    </div>
+
+    <p>
+      Read this document the way a rocket flies: from the engines up to the nose. Each section
+      answers not just <em>what</em> a stage does, but <em>why it sits where it sits</em>.
+    </p>
+  </section>
+
+  <!-- ── 2. Engines — E3DToken ─────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">🚀 Engines</p>
+      <h2>E3DToken — The Economic Substrate</h2>
+    </div>
+
+    <p>
+      Every rocket needs propellant with a known chemistry. E3D's propellant is a single canonical
+      asset with an unambiguous definition across chains. The rules are simple: one origin, one
+      supply, one source of truth. Every other layer indexes it, narrates it, or trades it —
+      but none of them define it.
+    </p>
+
+    <div class="insight">
+      <h4>E3DToken.sol — the canonical ERC-20</h4>
+      <p>
+        A clean OpenZeppelin ERC-20 (<code>E3D</code>) minted on Ethereum — the source of truth for
+        supply and liquidity. Two extensions do real work in the agent economy:
+        <code>ERC20Burnable</code> powers deflation-on-usage (fees are burned, so genuine activity
+        makes the token scarcer), and <code>ERC20Permit</code> lets an agent authorize a spend with a
+        signature instead of a separate transaction — the gasless primitive that machine-to-machine
+        x402 payments ride on.
+      </p>
+    </div>
+
+    <div class="insight">
+      <h4>E3DNFTManager.sol — the agent identity &amp; payment layer</h4>
+      <p>
+        An upgradeable (proxy) ERC-721 that is now the on-chain home for autonomous agents — far more
+        than the NFT marketplace it began as. Each agent mints a verifiable identity
+        (<code>mintAgentIdentity</code>) carrying its controlling wallet and a registration URI; the
+        activation fee is <strong>burned in E3D</strong>, so identity costs scarcity.
+      </p>
+      <p>
+        Reputation, validation level, and activity are recorded on the token, written by a
+        low-privilege <strong>scorer role</strong> (the Maps scoring service) kept separate from the
+        admin key. <code>getAgentTier</code> exposes an access tier that off-chain <strong>x402</strong>
+        metering reads to price each navigation call — you pay more for proven agents, not flat-rate
+        access. Identity tokens are non-transferable except through a deliberate
+        <code>handoffAgent</code> (you can sell a proven agent, but it can't be casually listed), and
+        an agent's <code>tokenURI</code> resolves to <code>maps.e3d.ai/agents/&lt;id&gt;</code> —
+        living metadata that serves its current reputation.
+      </p>
+      <p>
+        The result is the payment model for agentic navigation: <strong>E3D is the unit, x402 the
+        rail, the NFT is identity + reputation, and burn returns value to holders</strong> — one token
+        that meters what an agent consumes, prices it by what the agent has earned, and rewards what
+        it honestly contributes, with no human in the loop.
+      </p>
+    </div>
+
+    <div class="insight">
+      <h4>Wormhole bridge — the cross-chain rails</h4>
+      <p>
+        Rather than fragmenting supply by minting a second independent token, E3D uses Wormhole
+        Wrapped Token Transfers. The canonical asset stays locked on Ethereum; a 1:1-backed wrapped
+        SPL representation is minted on Solana after verification. The flow is deliberate and
+        auditable: <em>attest → transfer → redeem → verify balances on both chains.</em>
+        Ethereum is canonical. Solana receives the wrapped version, not a new token.
+      </p>
+    </div>
+
+    <p>
+      This layer is the substrate the rest of the stack indexes, narrates, predicts over, and
+      ultimately trades. Combustion happens here; everything above is what we do with the energy.
+    </p>
+  </section>
+
+  <!-- ── 3. Core stage ─────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">🛰 Core stage</p>
+      <h2>spacepacket / E3D.ai — The Data and Intelligence Hub</h2>
+    </div>
+
+    <p>
+      This is the heavy stage — the largest tank in the vehicle and the gravitational centre of the
+      whole ecosystem. It does three jobs: <strong>ingest, understand, and serve.</strong> Raw rows
+      from the chain arrive here and leave as stories, theses, and wallet intelligence that every
+      upper layer can trust.
+    </p>
+
+    <h3>Ingestion — buildDB</h3>
+    <p>
+      A wide battery of builders pulls the chains into a queryable substrate: Ethereum, BSC, and
+      Solana transactions and swaps; price histories; pool liquidity; address names and symbols; and
+      rolling timeseries that give every later layer a sense of motion rather than a single
+      snapshot. This is not a log. It is a living map of capital.
+    </p>
+
+    <h3>Intelligence</h3>
+    <p>
+      Raw rows are not insight. The intelligence layer distills activity into the higher-order
+      objects the rest of the stack consumes:
+    </p>
+
+    <div class="infra-row">
+      <div class="infra-chip"><strong>Stories</strong>Typed on-chain narratives</div>
+      <div class="infra-chip"><strong>Theses</strong>High-conviction views</div>
+      <div class="infra-chip"><strong>Wallet intel</strong>Counterparties + flows</div>
+      <div class="infra-chip"><strong>Market intel</strong>Microstructure signals</div>
+      <div class="infra-chip"><strong>Outcomes</strong>What actually happened</div>
+    </div>
+
+    <p>
+      Stories are the nervous system. They are typed narratives detected in on-chain behavior —
+      staging, clustering, accumulation, smart-money, stealth accumulation, breakouts, and more.
+      These are the pre-pump signals the entire thesis rests on. A token with an active story is a
+      token where something is happening. Everything else is noise.
+    </p>
+
+    <h3>Serving — API, MCP, and the visualization</h3>
+    <p>
+      The core stage exposes its intelligence through an HTTP API and a Model Context Protocol (MCP)
+      surface, so both humans and agents can read the same ground truth. The public
+      <code>/api/maps/...</code> routes live here, in the main E3D repository — the upper stages
+      produce objects that this surface later serves. On top of it all sits the original E3D
+      promise: a 3D visualization that turns Ethereum data into a navigable landscape, where users
+      can explore wallets, tokens, and flows as terrain.
+    </p>
+
+    <blockquote>
+      <p>The stage that converts fuel into usable thrust. Everything above it is a consumer of its
+      intelligence. Everything it learns flows back down into it.</p>
+      <cite>E3D Platform</cite>
+    </blockquote>
+  </section>
+
+  <!-- ── 4. Guidance — e3d-maps ────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">🧭 Guidance</p>
+      <h2>e3d-maps — Navigation Intelligence</h2>
+    </div>
+
+    <p>
+      If the core stage tells you <em>what is happening</em>, Maps tells you <strong>where things
+      are going next.</strong> It is the guidance computer: it reads the evidence and forecasts the
+      routes capital is likely to take, where congestion is forming, and which paths are becoming
+      hazardous for downstream agents.
+    </p>
+
+    <p>
+      Maps is, by design, a producer of validated machine-readable objects — never vibes, never
+      prose predictions. Every output is strictly schema-checked before any database write.
+      Confidence values are bounded. Required fields are enforced. Unknown signal types are
+      rejected. The schema is the contract.
+    </p>
+
+    <h3>The agent swarm</h3>
+    <p>
+      A constellation of focused producer agents, each with a narrow mandate, orchestrated over a
+      Qwen runtime with per-request LoRA adapter selection:
+    </p>
+
+    <div class="infra-row">
+      <div class="infra-chip"><strong>Capital</strong>Migration + conviction</div>
+      <div class="infra-chip"><strong>Congestion</strong>Formation detection</div>
+      <div class="infra-chip"><strong>Routes</strong>Emergence + closure + hazard</div>
+      <div class="infra-chip"><strong>Destination</strong>Probability prediction</div>
+      <div class="infra-chip"><strong>Liquidity</strong>Forecast</div>
+      <div class="infra-chip"><strong>Narrative</strong>Acceleration</div>
+      <div class="infra-chip"><strong>Watch</strong>Draft + outcome scoring</div>
+      <div class="infra-chip"><strong>Confidence</strong>Calibration scoring</div>
+    </div>
+
+    <h3>The objects it emits</h3>
+    <p>
+      The shared schema layer is the heart of the repository. Every output validates against it
+      before any write happens:
+    </p>
+
+    <div class="callout">
+      <p>
+        <code>NavigationSignal</code> · <code>RoutePrediction</code> · <code>TrafficState</code> ·
+        <code>PredictionOutcome</code> · <code>SignalUtilityScore</code> · <code>FlowGraph</code> ·
+        <code>CrossChainActivityState</code> · <code>WatchDraft</code> · <code>WatchPrediction</code> ·
+        <code>MapsNewsBrief</code>
+      </p>
+    </div>
+
+    <h3>Scheduled jobs and the closed loop</h3>
+    <p>
+      Scheduled jobs assemble traffic state and flow graphs, generate navigation signals, backtest
+      predictions, score pending and settled predictions, compute signal utility scores, and export
+      training examples. This last step is what makes Maps a learning system rather than a static
+      oracle: settled predictions become labeled training data that feeds the next generation of the
+      guidance computer.
+    </p>
+
+    <p>
+      Maps ships its own frontend to <strong>maps.e3d.ai</strong>, served as static files by nginx
+      that proxies API calls back to the main E3D endpoint. Same-origin, zero coupling between the
+      static layer and the API runtime.
+    </p>
+  </section>
+
+  <!-- ── 5. Command tip — trading-floor ────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">🎯 Command tip</p>
+      <h2>e3d-agent-trading-floor — Where Intent Becomes Consequence</h2>
+    </div>
+
+    <p>
+      The nose of the vehicle — the only stage permitted to act. It is a multi-agent, AI-assisted
+      portfolio system that runs a continuous cycle of discovery, evaluation, risk validation, and
+      execution. <strong>It is paper-mode by default.</strong> Live execution requires an explicit,
+      deliberate configuration change. Within paper mode, all portfolio state mutations are real —
+      the P&amp;L tracking, position sizing, cooldowns, and rotation logic all function as they
+      would in live trading. The only thing missing is the actual order submission.
+    </p>
+
+    <h3>Five specialists, one deterministic spine</h3>
+    <p>
+      No agent works alone, and no agent can unilaterally move capital. Five LLM agents collaborate
+      inside a pipeline whose backbone is plain, auditable code:
+    </p>
+
+    <table class="agent-table">
+      <thead>
+        <tr>
+          <th>Agent</th>
+          <th>Mandate</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="agent-name">Scout</span></td>
+          <td>Discovers 0–3 buy candidates from a story-filtered universe</td>
+        </tr>
+        <tr>
+          <td><span class="agent-name">Harvest</span></td>
+          <td>Manages held positions — hold, monitor, trim, or exit</td>
+        </tr>
+        <tr>
+          <td><span class="agent-name">Risk</span></td>
+          <td>Enforces hard limits and quant gates — the kill switch in code</td>
+        </tr>
+        <tr>
+          <td><span class="agent-name">Executor</span></td>
+          <td>Records the paper trade ticket or submits the live order</td>
+        </tr>
+        <tr>
+          <td><span class="agent-name">Manager</span></td>
+          <td>Grades the cycle after the fact, flags issues, writes the report</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      Between the agents sit the parts that actually hold the keys: a perception layer that builds
+      a ranked cognitive state from a handful of targeted API calls, hard sell checks (stop-loss,
+      fraud breach, target hits), and a deterministic portfolio engine for ranking, rotation,
+      and allocation.
+    </p>
+
+    <h3>Story-first, evidence-chained</h3>
+    <p>
+      The token universe shown to Scout is not a list of high-volume movers — it is dynamically
+      assembled from active story coverage and sorted by freshness of on-chain signal. Tokens with
+      no story are excluded regardless of momentum. Every candidate must carry an evidence chain:
+      <code>evidence[]</code>, <code>why_now</code>, <code>risks[]</code>,
+      <code>conviction_score</code>, an entry zone, an invalidation price, and targets.
+      Undocumented decisions are invalid by construction.
+    </p>
+
+    <div class="insight">
+      <h4>The core law of the command tip</h4>
+      <p>
+        <strong>AI suggests. Code decides.</strong> Language models produce structured JSON
+        proposals. Deterministic pipeline code validates every field, enforces every hard limit, and
+        chooses whether anything happens at all. A hallucination, a prompt injection, or a degraded
+        model can waste a cycle. It cannot move capital. This separation is not a safeguard bolted
+        on after the fact — it is the foundational architecture decision from which everything else
+        follows.
+      </p>
+    </div>
+
+    <h3>External boosters</h3>
+    <p>
+      Strap-on quant feeds enrich each cycle: DexScreener order flow, CoinGecko, Fear &amp; Greed,
+      and Binance funding. Every cycle is UUID-stamped and logged append-only to
+      <code>pipeline.jsonl</code> and optionally to ClickHouse for training data retention.
+      A live dashboard renders the floor in motion.
+    </p>
+  </section>
+
+  <!-- ── 6. The exhaust ────────────────────────────────────────────── -->
+  <!-- ── Agentic loops ─────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">Agentic loops</p>
+      <h2>Three Loops, Three Tempos — The Unit of Computation</h2>
+    </div>
+
+    <p>
+      Strip away the metaphor and E3D is not really four programs. It is three agentic loops running
+      at three different tempos, chained end to end. Each loop is the same primitive —
+      <em>perceive → decide → act → score → learn</em> — and one loop's output is the next one's
+      input. The loop, not the model, is the unit of computation.
+    </p>
+
+    <div class="insight">
+      <h4>The core loop — spacepacket, continuous</h4>
+      <p>
+        Ingest on-chain activity → detect stories and theses → generate candidate actions → evaluate
+        what actually happened → recalibrate → ingest again. The agent runtime and outcome evaluators
+        turn a firehose of transactions into scored intelligence, and never stop.
+      </p>
+    </div>
+
+    <div class="insight">
+      <h4>The navigation loop — e3d-maps, scheduled</h4>
+      <p>
+        Pull evidence → the producer swarm emits signals and route predictions → consumers act →
+        dual-witness scoring settles each prediction → calibration and utility scores update →
+        quality-gated examples export → the adapter fine-tunes → sharper predictions next cycle. This
+        is the loop that learns to be right.
+      </p>
+    </div>
+
+    <div class="insight">
+      <h4>The trading loop — e3d-agent-trading-floor, every ~5 minutes</h4>
+      <p>
+        Build the cognitive state → Scout and Harvest propose → Risk validates → the portfolio engine
+        sizes → Executor records → Manager grades the cycle → log the training event → run again. A
+        deterministic spine with five agents riding it.
+      </p>
+    </div>
+
+    <p>
+      <strong>Loops with skin in the game.</strong> What separates these from the demos crowding
+      everyone's feed is that they are economically autonomous. Every agent can carry an on-chain
+      identity (an E3DNFTManager NFT), earn a reputation scored by the loop's own outcomes, pay for
+      services it consumes from other loops (x402, settled in E3D, priced by its tier), and be paid
+      for the honest signal it contributes. Perceive, decide, act, score, learn — and settle up.
+    </p>
+
+    <p>
+      <strong>Nested, not isolated.</strong> The loops chain: the core's stories feed Maps'
+      predictions; Maps' predictions feed Trade's decisions; the settled outcomes from Trade and Maps
+      flow back down into the core and the shared adapters. Three tempos, one closed system — which is
+      exactly what the exhaust is.
+    </p>
+  </section>
+
+  <!-- ── The exhaust ───────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">🔥 The exhaust</p>
+      <h2>Outcomes as Training Fuel — The Closed Loop</h2>
+    </div>
+
+    <p>
+      A starship that threw its propellant away would be a poor design. E3D recaptures it.
+      Predictions and trades both settle — and settlement is the most valuable data the system
+      produces. Every outcome flows back down the stack as training signal, so the vehicle does not
+      just climb; it climbs <em>smarter on every burn.</em>
+    </p>
+
+    <div class="flywheel">
+      <h4>The compounding loop</h4>
+      <div class="flywheel-row"><span class="flywheel-arrow">→</span><span class="flywheel-text">E3D stories + theses + wallet data + market data <em>(the sensors)</em></span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">→</span><span class="flywheel-text">Maps agents generate NavigationSignals with stated confidence</span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">→</span><span class="flywheel-text">Consumer agents act — trading, treasury, research</span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">→</span><span class="flywheel-text">Dual-witness outcome scoring: did it realize? <em>(exogenous vs. induced)</em></span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">→</span><span class="flywheel-text">Calibration curves updated; signal utility scores computed</span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">→</span><span class="flywheel-text">Quality-gated training export: disputed labels excluded</span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">→</span><span class="flywheel-text">Qwen + LoRA adapter fine-tuned on honest examples only</span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">→</span><span class="flywheel-text">Sharper signals, better-calibrated confidence, smarter pipeline</span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">↺</span><span class="flywheel-text"><em>Repeat — each revolution produces a slightly smarter navigator</em></span></div>
+    </div>
+
+    <p>
+      The system is designed to be wrong early and right later — to fail with precision, learn from
+      the failure, and accumulate an advantage that compounds with every cycle. The training data
+      asset at the centre of that loop cannot be scraped, synthesised, or purchased. It can only be
+      earned by running the system honestly and scoring every prediction ruthlessly.
+    </p>
+  </section>
+
+  <!-- ── 7. Integration boundary ──────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">The launch infrastructure</p>
+      <h2>How the Stages Connect — Contracts, Not Imports</h2>
+    </div>
+
+    <p>
+      The stages are bolted together by contracts, not imports. This is a hard architectural law,
+      not a stylistic preference. There are no direct runtime imports between any two repositories.
+      Shared databases and API contracts <em>are</em> the integration boundary. Replace a stage and
+      the contract holds. Couple two stages directly and you have welded the fuel tank to the nose
+      cone — exactly what this architecture refuses to do.
+    </p>
+
+    <div class="infra-row">
+      <div class="infra-chip"><strong>ClickHouse</strong>Shared write-side store for predictions, outcomes, training data. Append-only.</div>
+      <div class="infra-chip"><strong>API + MCP</strong>The lingua franca. Upper stages read ground truth here. Public /api/maps/... routes live in the core.</div>
+      <div class="infra-chip"><strong>Qwen + LoRA</strong>Shared inference substrate. Per-request adapter path. Specialized agents on a common serving layer.</div>
+    </div>
+
+    <blockquote>
+      <p>The payoff: each stage can be built, tested, deployed, and reasoned about in isolation.
+      The contract is the only surface that matters.</p>
+      <cite>E3D Platform</cite>
+    </blockquote>
+  </section>
+
+  <!-- ── 8. End-to-end ─────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">End to end</p>
+      <h2>One Full Burn — A Signal From Engines to Tip and Back</h2>
+    </div>
+
+    <p>
+      To see the whole vehicle fire in sequence, follow a single signal from the engines to the
+      command tip and back into the exhaust:
+    </p>
+
+    <div class="flywheel">
+      <h4>Full cycle</h4>
+      <div class="flywheel-row"><span class="flywheel-arrow">1</span><span class="flywheel-text"><strong>Ignition.</strong> Capital moves on-chain — an E3D token, an NFT, a swap, a bridge transfer.</span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">2</span><span class="flywheel-text"><strong>Combustion.</strong> spacepacket indexes it and detects a story — say, stealth accumulation in the pre-pump window.</span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">3</span><span class="flywheel-text"><strong>Guidance.</strong> e3d-maps reads that story and emits a <code>RoutePrediction</code> and a <code>NavigationSignal</code>: capital is likely to flow toward a given destination, and the route is clear.</span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">4</span><span class="flywheel-text"><strong>Command.</strong> Scout, shown a story-filtered universe and the Maps picture, proposes an evidence-chained candidate. Risk validates against hard limits. The portfolio engine sizes it. Executor records the ticket.</span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">5</span><span class="flywheel-text"><strong>Exhaust.</strong> The prediction and the trade both settle. Maps scores the prediction; Manager grades the cycle. Both outcomes export as training data and flow back down.</span></div>
+      <div class="flywheel-row"><span class="flywheel-arrow">6</span><span class="flywheel-text"><strong>Next burn.</strong> Sharper stories, better-calibrated predictions, more disciplined agents.</span></div>
+    </div>
+  </section>
+
+  <!-- ── 9. Principles ─────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="section-header">
+      <p class="eyebrow">Design principles</p>
+      <h2>The Laws That Hold the Vehicle Together</h2>
+    </div>
+
+    <div class="principles">
+      <div class="principle">
+        <div class="principle-icon">→</div>
+        <div class="principle-text"><strong>AI suggests, code decides.</strong> Models propose; deterministic code disposes. The LLM never writes directly to the portfolio.</div>
+      </div>
+      <div class="principle">
+        <div class="principle-icon">→</div>
+        <div class="principle-text"><strong>Story-first, not price-first.</strong> Aim at the pre-pump window, never chase the candle. Tokens with no story coverage are excluded regardless of momentum.</div>
+      </div>
+      <div class="principle">
+        <div class="principle-icon">→</div>
+        <div class="principle-text"><strong>Evidence chains, not guesses.</strong> Every decision carries its receipts. Undocumented candidates are invalid by construction.</div>
+      </div>
+      <div class="principle">
+        <div class="principle-icon">→</div>
+        <div class="principle-text"><strong>Validate before you write.</strong> Strict schemas guard every database boundary. A signal that fails validation is never written.</div>
+      </div>
+      <div class="principle">
+        <div class="principle-icon">→</div>
+        <div class="principle-text"><strong>Contracts, not imports.</strong> Stages meet in shared data and APIs — never in each other's runtime. The integration boundary is explicit and narrow.</div>
+      </div>
+      <div class="principle">
+        <div class="principle-icon">→</div>
+        <div class="principle-text"><strong>Fail safely.</strong> Paper mode by default. Live execution is an explicit, deliberate act. Within paper mode, all logic is live — only the order submission is withheld.</div>
+      </div>
+      <div class="principle">
+        <div class="principle-icon">→</div>
+        <div class="principle-text"><strong>Close the loop.</strong> Outcomes are fuel. Recapture the exhaust. The system is designed to be wrong early and right later.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CTA ──────────────────────────────────────────────────────── -->
+  <section class="cta-section">
+    <p class="eyebrow">Explore the stack</p>
+    <h2>Where to Go Next</h2>
+    <div class="cta-grid">
+      <div class="cta-card">
+        <p class="cta-label">Navigation signals</p>
+        <code class="cta-url">maps.e3d.ai/signals</code>
+        <p class="cta-desc">Live on-chain signals from the Maps prediction swarm.</p>
+      </div>
+      <div class="cta-card">
+        <p class="cta-label">Traffic state</p>
+        <code class="cta-url">maps.e3d.ai</code>
+        <p class="cta-desc">The current market-wide summary: condition, flows, destinations, hazards.</p>
+      </div>
+      <div class="cta-card">
+        <p class="cta-label">Calibration</p>
+        <code class="cta-url">maps.e3d.ai/calibration</code>
+        <p class="cta-desc">Reliability curves and hit-rate history. The proof, not the pitch.</p>
+      </div>
+      <div class="cta-card">
+        <p class="cta-label">Whitepaper</p>
+        <code class="cta-url">maps.e3d.ai/whitepaper</code>
+        <p class="cta-desc">The full technical specification of the Maps intelligence layer.</p>
+      </div>
+    </div>
+  </section>
+
+  <p class="closing">Build the telescope,<br>not the rear-view mirror.</p>
+
+</article>
+</body>
+</html>

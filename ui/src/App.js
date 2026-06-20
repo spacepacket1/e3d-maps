@@ -13,6 +13,7 @@ import { RecommendationsPage } from "./pages/Recommendations.js";
 import { StoryTypesPage } from "./pages/StoryTypes.js";
 import { DocsPage } from "./pages/Docs.js";
 import { WhitepaperPage } from "./pages/Whitepaper.js";
+import { ArchitecturePage } from "./pages/Architecture.js";
 import { NotFoundPage } from "./pages/NotFound.js";
 import { ApiDocsPage } from "./pages/ApiDocs.js";
 
@@ -29,6 +30,7 @@ const pageRegistry = {
   recommendations: RecommendationsPage,
   "story-types": StoryTypesPage,
   whitepaper: WhitepaperPage,
+  architecture: ArchitecturePage,
   docs: DocsPage,
   "api-docs": ApiDocsPage,
   "not-found": NotFoundPage,
