@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 from base64 import b64encode
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Iterable, TextIO
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+
+UTC = timezone.utc
 
 from schemas.consumer_attestation import ConsumerAttestation
 from schemas.cross_chain_activity_state import CrossChainActivityState

@@ -191,6 +191,28 @@ def test_get_latest_maps_news_brief_returns_latest_row():
     assert brief.created_at.isoformat() == "2026-06-16T13:52:17+00:00"
 
 
+def test_list_maps_news_briefs_returns_recent_rows_with_pagination():
+    seen = {}
+
+    def query_executor(body: bytes) -> bytes:
+        seen["sql"] = body.decode("utf-8")
+        return _serialize_json_each_row(
+            _maps_news_brief_row(id="news_02", headline="Bridge routes look crowded but active"),
+            _maps_news_brief_row(id="news_01", headline="Ethereum stays active while congestion builds"),
+        )
+
+    service = MapsAPIService(query_executor=query_executor)
+
+    result = service.list_maps_news_briefs(limit=1, offset=0)
+
+    assert "FROM MapsNewsBriefs" in seen["sql"]
+    assert "ORDER BY created_at DESC, id DESC" in seen["sql"]
+    assert "LIMIT 2 OFFSET 0" in seen["sql"]
+    assert len(result.items) == 1
+    assert result.items[0].id == "news_02"
+    assert result.has_more is True
+
+
 def test_get_latest_cross_chain_activity_state_returns_latest_row():
     seen = {}
 
@@ -309,6 +331,19 @@ def test_route_handlers_return_expected_payload_shapes():
     assert news_response.body["news"]["stance"] == "crowded"
     assert news_response.body["news"]["generated_at"] == "2026-06-16T13:52:17Z"
     assert "id" not in news_response.body["news"]
+    assert news_response.body["news_briefs"] == [news_response.body["news"]]
+    assert news_response.body["pagination"]["count"] == 1
+
+    multi_news_service = MapsAPIService(
+        query_executor=lambda body: _serialize_json_each_row(
+            _maps_news_brief_row(id="news_02", headline="Bridge routes look crowded but active"),
+            _maps_news_brief_row(id="news_01", headline="Ethereum stays active while congestion builds"),
+        )
+    )
+    multi_news_response = get_maps_news(multi_news_service, limit=5)
+    assert multi_news_response.status_code == 200
+    assert len(multi_news_response.body["news_briefs"]) == 2
+    assert multi_news_response.body["news"]["headline"] == "Bridge routes look crowded but active"
 
     cross_chain_service = MapsAPIService(
         query_executor=lambda body: _serialize_json_each_row(_cross_chain_activity_state_row())

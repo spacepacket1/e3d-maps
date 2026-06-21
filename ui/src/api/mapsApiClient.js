@@ -64,6 +64,16 @@ export function createMapsApiClient({ baseUrl = "", fetchImpl = globalThis.fetch
       const body = await request("/api/maps/news", { allowNotFound: true });
       return body?.news || null;
     },
+    async listNews(filters = {}) {
+      const body = await request("/api/maps/news", {
+        allowNotFound: true,
+        query: {
+          limit: filters.limit,
+          offset: filters.offset,
+        },
+      });
+      return body || emptyPage("news_briefs");
+    },
     async getCrossChainActivity() {
       const body = await request("/api/maps/cross-chain", { allowNotFound: true });
       return body?.cross_chain || null;
@@ -94,6 +104,15 @@ export function createMapsApiClient({ baseUrl = "", fetchImpl = globalThis.fetch
         },
       });
       return body || emptyPage("routes");
+    },
+    async listPredictions(filters = {}) {
+      const body = await request("/api/maps/predictions", {
+        query: {
+          limit: filters.limit,
+          offset: filters.offset,
+        },
+      });
+      return body || emptyPage("predictions");
     },
     async listHazards(filters = {}) {
       const body = await request("/api/maps/hazards", {

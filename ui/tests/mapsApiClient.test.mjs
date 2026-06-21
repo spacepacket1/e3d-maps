@@ -67,6 +67,31 @@ test("getNews preserves the news payload when the endpoint is available", async 
   assert.deepEqual(news, payload);
 });
 
+test("listNews requests bounded news briefs", async () => {
+  const payload = [
+    {
+      headline: "Ethereum is active",
+      summary: "Flows remain live across ETH DeFi.",
+      stance: "cautious",
+      tags: ["ethereum"],
+      generated_at: "2026-06-16T13:52:17Z",
+    },
+  ];
+  const client = createMapsApiClient({
+    fetchImpl: async (url) => {
+      assert.equal(url, "/api/maps/news?limit=5");
+      return {
+        status: 200,
+        ok: true,
+        json: async () => ({ status: "ok", news: payload[0], news_briefs: payload }),
+      };
+    },
+  });
+
+  const response = await client.listNews({ limit: 5 });
+  assert.deepEqual(response.news_briefs, payload);
+});
+
 test("getCrossChainActivity returns null for a 404 response", async () => {
   const client = createMapsApiClient({
     fetchImpl: async (url) => {

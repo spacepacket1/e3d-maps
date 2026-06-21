@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
+
+UTC = timezone.utc
 
 from schemas.cross_chain_activity_state import CrossChainActivityState
 from schemas.maps_news_brief import MapsNewsBrief

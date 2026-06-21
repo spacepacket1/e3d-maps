@@ -21,7 +21,7 @@
     },
     {
       "name": "State",
-      "description": "Current traffic state \u2014 full situational picture"
+      "description": "Current traffic state — full situational picture"
     },
     {
       "name": "News",
@@ -33,11 +33,11 @@
     },
     {
       "name": "Signals",
-      "description": "NavigationSignals \u2014 individual agent-actionable findings"
+      "description": "NavigationSignals — individual agent-actionable findings"
     },
     {
       "name": "Routes",
-      "description": "RoutePredictions \u2014 structured capital route forecasts"
+      "description": "RoutePredictions — structured capital route forecasts"
     },
     {
       "name": "Hazards",
@@ -63,7 +63,7 @@
           "Recommendations"
         ],
         "summary": "Get ranked recommendations",
-        "description": "Returns a ranked list of recommended actions synthesized from all available navigation intelligence \u2014 signals, routes, hazards, congestion, and predictions. The primary decision-support endpoint for autonomous agents. Call this to find out what to do next.",
+        "description": "Returns a ranked list of recommended actions synthesized from all available navigation intelligence — signals, routes, hazards, congestion, and predictions. The primary decision-support endpoint for autonomous agents. Call this to find out what to do next.",
         "operationId": "getRecommendations",
         "parameters": [
           {
@@ -167,7 +167,7 @@
           "State"
         ],
         "summary": "Get current TrafficState",
-        "description": "Returns the latest TrafficState \u2014 the full map of the market: dominant flows, congestion zones, active hazards, and top capital destinations by confidence. Primary situational-awareness endpoint for agents before making a decision.",
+        "description": "Returns the latest TrafficState — the full map of the market: dominant flows, congestion zones, active hazards, and top capital destinations by confidence. Primary situational-awareness endpoint for agents before making a decision.",
         "operationId": "getTrafficState",
         "responses": {
           "200": {
@@ -217,12 +217,31 @@
         "tags": [
           "News"
         ],
-        "summary": "Get latest Maps News brief",
-        "description": "Returns the latest MapsNewsBrief artifact as a compact market read. If no artifact exists yet, the endpoint returns 404 not_found and should be treated as an empty state by clients. Configure Cache-Control: max-age=300 at the outer HTTP layer or reverse proxy that serves this route.",
+        "summary": "Get recent Maps News briefs",
+        "description": "Returns recent MapsNewsBrief artifacts as compact market reads, newest first. The legacy `news` field contains the latest brief; `news_briefs` contains the bounded list. If no artifact exists yet, the endpoint returns 404 not_found and should be treated as an empty state by clients. Configure Cache-Control: max-age=300 at the outer HTTP layer or reverse proxy that serves this route.",
         "operationId": "getMapsNews",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Latest Maps News brief",
+            "description": "Recent Maps News briefs",
             "content": {
               "application/json": {
                 "schema": {
@@ -239,6 +258,24 @@
                       "congestion"
                     ],
                     "generated_at": "2026-06-16T13:52:17Z"
+                  },
+                  "news_briefs": [
+                    {
+                      "headline": "Ethereum is active, but route quality is deteriorating",
+                      "summary": "Flows remain live across ETH DeFi and major venues, but congestion and route closures suggest a crowded environment with rising execution risk.",
+                      "stance": "cautious",
+                      "tags": [
+                        "ethereum",
+                        "congestion"
+                      ],
+                      "generated_at": "2026-06-16T13:52:17Z"
+                    }
+                  ],
+                  "pagination": {
+                    "count": 1,
+                    "limit": 5,
+                    "offset": 0,
+                    "has_more": false
                   }
                 }
               }
@@ -348,7 +385,7 @@
           {
             "name": "min_confidence",
             "in": "query",
-            "description": "Minimum confidence threshold (0.0\u20131.0). Use 0.8 for high-confidence signals only.",
+            "description": "Minimum confidence threshold (0.0–1.0). Use 0.8 for high-confidence signals only.",
             "schema": {
               "type": "number",
               "format": "float",
@@ -450,7 +487,7 @@
           "Routes"
         ],
         "summary": "List RoutePredictions",
-        "description": "Returns RoutePrediction records \u2014 structured predictions about specific capital routes including expected flow direction, magnitude, and time horizon.",
+        "description": "Returns RoutePrediction records — structured predictions about specific capital routes including expected flow direction, magnitude, and time horizon.",
         "operationId": "listRoutes",
         "parameters": [
           {
@@ -532,7 +569,7 @@
           "Congestion"
         ],
         "summary": "List congestion zones",
-        "description": "Returns congestion_formation signals \u2014 zones where capital is accumulating faster than it can clear. Useful for timing entries and exits.",
+        "description": "Returns congestion_formation signals — zones where capital is accumulating faster than it can clear. Useful for timing entries and exits.",
         "operationId": "listCongestion",
         "parameters": [
           {
@@ -573,7 +610,7 @@
           "Predictions"
         ],
         "summary": "List forward-looking predictions",
-        "description": "Returns capital_migration and destination_prediction signals \u2014 the forward-looking layer. Agents use these to position before a move, not after.",
+        "description": "Returns capital_migration and destination_prediction signals — the forward-looking layer. Agents use these to position before a move, not after.",
         "operationId": "listPredictions",
         "parameters": [
           {
@@ -655,7 +692,7 @@
           "Story Types"
         ],
         "summary": "List all story type definitions",
-        "description": "Returns all StoryTypeDefinitions \u2014 the taxonomy of on-chain story types that Maps agents interpret as navigation evidence.",
+        "description": "Returns all StoryTypeDefinitions — the taxonomy of on-chain story types that Maps agents interpret as navigation evidence.",
         "operationId": "listStoryTypes",
         "parameters": [
           {
@@ -733,6 +770,221 @@
           }
         }
       }
+    },
+    "/api/maps/graph": {
+      "get": {
+        "tags": [
+          "Graph"
+        ],
+        "summary": "Get latest FlowGraph snapshot",
+        "description": "Returns the latest FlowGraphSnapshot with ranked FlowGraphEdges.",
+        "operationId": "getFlowGraph",
+        "responses": {
+          "200": {
+            "description": "Latest FlowGraph snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlowGraphResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "FlowGraph snapshot not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/maps/graph/{node}": {
+      "get": {
+        "tags": [
+          "Graph"
+        ],
+        "summary": "Get FlowGraph edges around a node",
+        "description": "Returns edges touching a specific origin or destination node in the latest FlowGraph snapshot.",
+        "operationId": "getFlowGraphNode",
+        "parameters": [
+          {
+            "name": "node",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "FlowGraph edges around node",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlowGraphNodeResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "FlowGraph snapshot not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/maps/calibration": {
+      "get": {
+        "tags": [
+          "Calibration"
+        ],
+        "summary": "Get prediction calibration and reliability",
+        "description": "Returns scored prediction reliability over a lookback window, including overall hit rate and per-signal-type reliability curves.",
+        "operationId": "getMapsCalibration",
+        "parameters": [
+          {
+            "name": "lookback_days",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 30,
+              "maximum": 365
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Calibration report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalibrationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/maps/notable": {
+      "get": {
+        "tags": [
+          "Signals"
+        ],
+        "summary": "List notable Maps signals",
+        "description": "Returns NavigationSignals ranked by notability, using utility scores when available and confidence as a fallback.",
+        "operationId": "listNotableSignals",
+        "parameters": [
+          {
+            "name": "min_score",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "maximum": 500
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of notable signals",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotableResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/maps/outcomes": {
+      "post": {
+        "tags": [
+          "Outcomes"
+        ],
+        "summary": "Create a consumer attestation",
+        "description": "Append a consumer attestation for a WatchPrediction.",
+        "operationId": "createConsumerAttestation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsumerAttestationRequest"
+              },
+              "example": {
+                "watch_prediction_id": "wp_01j...",
+                "consumer_id": "agent_alpha",
+                "acted": true,
+                "observed_direction": "inflow",
+                "observed_magnitude": "moderate",
+                "notes": "Observed matching bridge inflow after acting.",
+                "created_at": "2026-06-19T17:00:00Z"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created attestation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsumerAttestationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid attestation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -767,19 +1019,19 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 100,
-            "description": "Confidence 0\u2013100"
+            "description": "Confidence 0–100"
           },
           "risk": {
             "type": "integer",
             "minimum": 0,
             "maximum": 100,
-            "description": "Risk score 0\u2013100"
+            "description": "Risk score 0–100"
           },
           "score": {
             "type": "integer",
             "minimum": 0,
             "maximum": 100,
-            "description": "Final recommendation score 0\u2013100"
+            "description": "Final recommendation score 0–100"
           },
           "reasoning": {
             "type": "array",
@@ -1317,11 +1569,22 @@
           },
           "news": {
             "$ref": "#/components/schemas/MapsNews"
+          },
+          "news_briefs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MapsNews"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
           }
         },
         "required": [
           "status",
-          "news"
+          "news",
+          "news_briefs",
+          "pagination"
         ]
       },
       "RouteSummary": {
@@ -1601,6 +1864,367 @@
         "required": [
           "status",
           "cross_chain"
+        ]
+      },
+      "FlowGraphEdge": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "snapshot_id": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "destination": {
+            "type": "string"
+          },
+          "strength": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "hazard_level": {
+            "type": "string"
+          },
+          "source_signal_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "edge_status": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "FlowGraphResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "graph": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "signal_count": {
+                "type": "integer"
+              },
+              "node_count": {
+                "type": "integer"
+              },
+              "edge_count": {
+                "type": "integer"
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "edges": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/FlowGraphEdge"
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "status",
+          "graph"
+        ]
+      },
+      "FlowGraphNodeResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "node": {
+            "type": "string"
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FlowGraphEdge"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "node",
+          "edges"
+        ]
+      },
+      "CalibrationResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "calibration": {
+            "type": "object",
+            "properties": {
+              "lookback_days": {
+                "type": "integer"
+              },
+              "overall": {
+                "type": "object",
+                "properties": {
+                  "mean_confidence": {
+                    "type": "number",
+                    "nullable": true
+                  },
+                  "mean_accuracy": {
+                    "type": "number",
+                    "nullable": true
+                  },
+                  "calibration_error": {
+                    "type": "number",
+                    "nullable": true
+                  },
+                  "hit_rate": {
+                    "type": "number",
+                    "nullable": true
+                  },
+                  "total_scored": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "by_signal_type": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "reliability_curve": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "confidence_bucket": {
+                            "type": "number"
+                          },
+                          "mean_confidence": {
+                            "type": "number"
+                          },
+                          "realized_accuracy": {
+                            "type": "number"
+                          },
+                          "sample_count": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "utility": {
+                      "type": "object",
+                      "nullable": true
+                    }
+                  }
+                }
+              },
+              "total_signals": {
+                "type": "integer"
+              },
+              "signals_last_24h": {
+                "type": "integer"
+              },
+              "avg_confidence": {
+                "type": "number"
+              },
+              "min_confidence": {
+                "type": "number"
+              },
+              "max_confidence": {
+                "type": "number"
+              },
+              "signal_type_breakdown": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "signal_type": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "status",
+          "calibration"
+        ]
+      },
+      "NotableSignal": {
+        "type": "object",
+        "properties": {
+          "signal_id": {
+            "type": "string"
+          },
+          "signal_type": {
+            "type": "string"
+          },
+          "asset_scope": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "chain_scope": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "notability": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      },
+      "NotableResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "notable": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotableSignal"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "required": [
+          "status",
+          "notable",
+          "pagination"
+        ]
+      },
+      "ConsumerAttestationRequest": {
+        "type": "object",
+        "required": [
+          "watch_prediction_id",
+          "consumer_id",
+          "acted",
+          "created_at"
+        ],
+        "properties": {
+          "watch_prediction_id": {
+            "type": "string"
+          },
+          "consumer_id": {
+            "type": "string"
+          },
+          "acted": {
+            "type": "boolean"
+          },
+          "observed_direction": {
+            "type": "string",
+            "enum": [
+              "inflow",
+              "outflow",
+              "neutral",
+              "mixed"
+            ],
+            "nullable": true
+          },
+          "observed_magnitude": {
+            "type": "string",
+            "enum": [
+              "low",
+              "moderate",
+              "high"
+            ],
+            "nullable": true
+          },
+          "notes": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ConsumerAttestation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "watch_prediction_id": {
+            "type": "string"
+          },
+          "consumer_id": {
+            "type": "string"
+          },
+          "acted": {
+            "type": "boolean"
+          },
+          "observed_direction": {
+            "type": "string",
+            "nullable": true
+          },
+          "observed_magnitude": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ConsumerAttestationResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "attestation": {
+            "$ref": "#/components/schemas/ConsumerAttestation"
+          }
+        },
+        "required": [
+          "status",
+          "attestation"
         ]
       }
     }

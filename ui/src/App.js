@@ -3,6 +3,7 @@ import { createMapsApiClient } from "./api/mapsApiClient.js";
 import { Layout } from "./components/Layout.js";
 import { matchRoute } from "./router.js";
 import { MapsHomePage } from "./pages/MapsHome.js";
+import { NewsPage } from "./pages/News.js";
 import { NavigationSignalsPage } from "./pages/NavigationSignals.js";
 import { SignalDetailPage } from "./pages/SignalDetail.js";
 import { RoutePredictionsPage } from "./pages/RoutePredictions.js";
@@ -21,6 +22,7 @@ const mapsApi = createMapsApiClient();
 
 const pageRegistry = {
   "maps-home": MapsHomePage,
+  news: NewsPage,
   "signals-list": NavigationSignalsPage,
   "signal-detail": SignalDetailPage,
   routes: RoutePredictionsPage,

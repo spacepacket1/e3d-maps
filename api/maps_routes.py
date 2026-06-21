@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import ValidationError
@@ -30,22 +30,23 @@ def get_maps_state(service: MapsAPIService) -> RouteResponse:
     )
 
 
-def get_maps_news(service: MapsAPIService) -> RouteResponse:
-    news = service.get_latest_maps_news_brief()
-    if news is None:
+def get_maps_news(service: MapsAPIService, *, limit: int = 1, offset: int = 0) -> RouteResponse:
+    result = service.list_maps_news_briefs(limit=limit, offset=offset)
+    if not result.items:
         return RouteResponse(status_code=404, body={"status": "not_found", "error": "news_not_found"})
 
-    payload = model_to_dict(news)
+    briefs = [_maps_news_payload(brief) for brief in result.items]
     return RouteResponse(
         status_code=200,
         body={
             "status": "ok",
-            "news": {
-                "headline": payload["headline"],
-                "summary": payload["summary"],
-                "stance": payload["stance"],
-                "tags": payload["tags"],
-                "generated_at": payload["created_at"],
+            "news": briefs[0],
+            "news_briefs": briefs,
+            "pagination": {
+                "count": len(briefs),
+                "limit": result.limit,
+                "offset": result.offset,
+                "has_more": result.has_more,
             },
         },
     )
@@ -76,6 +77,17 @@ def get_maps_cross_chain(service: MapsAPIService) -> RouteResponse:
             },
         },
     )
+
+
+def _maps_news_payload(news: Any) -> dict[str, Any]:
+    payload = model_to_dict(news)
+    return {
+        "headline": payload["headline"],
+        "summary": payload["summary"],
+        "stance": payload["stance"],
+        "tags": payload["tags"],
+        "generated_at": payload["created_at"],
+    }
 
 
 def get_maps_signals(
@@ -154,7 +166,7 @@ def get_maps_recommendations(
     return RouteResponse(
         status_code=200,
         body={
-            "generatedAt": datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "generatedAt": datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "objective": objective,
             "recommendations": [model_to_dict(r) for r in recommendations],
         },

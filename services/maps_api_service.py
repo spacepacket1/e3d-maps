@@ -93,6 +93,21 @@ class MapsAPIService:
             return None
         return normalize_maps_news_brief_row(rows[0])
 
+    def list_maps_news_briefs(self, *, limit: int = 5, offset: int = 0) -> PaginatedResult[MapsNewsBrief]:
+        return self._list_rows(
+            table_sql="""
+            SELECT *
+            FROM MapsNewsBriefs
+            ORDER BY created_at DESC, id DESC
+            {limit_clause}
+            FORMAT JSONEachRow
+            """,
+            filters=[],
+            limit=limit,
+            offset=offset,
+            normalizer=normalize_maps_news_brief_row,
+        )
+
     def get_latest_cross_chain_activity_state(self) -> CrossChainActivityState | None:
         rows = self._query_rows(
             """

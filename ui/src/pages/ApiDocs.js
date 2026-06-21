@@ -79,9 +79,12 @@ const ENDPOINTS = [
   },
   {
     path: "/api/maps/news",
-    description: "Returns the latest MapsNewsBrief — a short editorial read of current market conditions derived from the stored Maps artifact. A 404 not_found means the artifact has not been generated yet and should be treated as an empty state.",
+    description: "Returns recent MapsNewsBrief artifacts, newest first. The legacy news field contains the latest brief; news_briefs contains the bounded list. A 404 not_found means the artifact has not been generated yet and should be treated as an empty state.",
     pathParams: [],
-    queryParams: [],
+    queryParams: [
+      { name: "limit", type: "integer", placeholder: "5", desc: "Max briefs to return (default 1, max 200)" },
+      { name: "offset", type: "integer", placeholder: "0", desc: "Pagination offset" },
+    ],
     exampleResponse: `{
   "status": "ok",
   "news": {
@@ -90,7 +93,17 @@ const ENDPOINTS = [
     "stance": "cautious",
     "tags": ["ethereum", "congestion"],
     "generated_at": "2026-06-16T13:52:17Z"
-  }
+  },
+  "news_briefs": [
+    {
+      "headline": "Ethereum is active, but route quality is deteriorating",
+      "summary": "Flows remain live across ETH DeFi and major venues, but congestion and route closures suggest a crowded environment with rising execution risk.",
+      "stance": "cautious",
+      "tags": ["ethereum", "congestion"],
+      "generated_at": "2026-06-16T13:52:17Z"
+    }
+  ],
+  "pagination": { "limit": 5, "offset": 0, "count": 1, "has_more": false }
 }`,
   },
   {
@@ -256,6 +269,147 @@ const ENDPOINTS = [
 }`,
   },
   {
+    path: "/api/maps/graph",
+    description: "Returns the latest FlowGraph snapshot with up to 500 ranked edges. Use this to reconstruct the current capital-flow graph.",
+    pathParams: [],
+    queryParams: [],
+    exampleResponse: `{
+  "status": "ok",
+  "graph": {
+    "id": "fg_01j...",
+    "signal_count": 500,
+    "node_count": 167,
+    "edge_count": 282,
+    "created_at": "2026-06-19T17:34:43Z",
+    "edges": [
+      {
+        "id": "fge_01j...",
+        "origin": "ETH",
+        "destination": "SOLANA",
+        "strength": "strong",
+        "confidence": 0.85,
+        "hazard_level": "high",
+        "edge_status": "active",
+        "source_signal_ids": ["navsig_01j..."]
+      }
+    ]
+  }
+}`,
+  },
+  {
+    path: "/api/maps/graph/:node",
+    description: "Returns edges touching a specific graph node in the latest FlowGraph snapshot.",
+    pathParams: [
+      { name: "node", placeholder: "ETH", desc: "Origin or destination node label" },
+    ],
+    queryParams: [],
+    exampleResponse: `{
+  "status": "ok",
+  "node": "ETH",
+  "edges": [
+    {
+      "origin": "ETH",
+      "destination": "SOLANA",
+      "confidence": 0.85,
+      "hazard_level": "high",
+      "edge_status": "active"
+    }
+  ]
+}`,
+  },
+  {
+    path: "/api/maps/calibration",
+    description: "Returns scored prediction reliability over a lookback window, including overall hit rate, calibration error, and reliability curves by signal type.",
+    pathParams: [],
+    queryParams: [
+      { name: "lookback_days", type: "integer", placeholder: "30", desc: "Lookback window in days (default 30, max 365)" },
+    ],
+    exampleResponse: `{
+  "status": "ok",
+  "calibration": {
+    "lookback_days": 30,
+    "overall": {
+      "mean_confidence": 0.3924,
+      "mean_accuracy": 0.3109,
+      "calibration_error": 0.0815,
+      "hit_rate": 0.0261,
+      "total_scored": 6019
+    },
+    "by_signal_type": {
+      "destination_prediction": {
+        "reliability_curve": [
+          {
+            "confidence_bucket": 0.5,
+            "mean_confidence": 0.5402,
+            "realized_accuracy": 0.3559,
+            "sample_count": 290
+          }
+        ],
+        "utility": null
+      }
+    }
+  }
+}`,
+  },
+  {
+    path: "/api/maps/notable",
+    description: "Returns NavigationSignals ranked by notability, combining utility scores when available with confidence fallback.",
+    pathParams: [],
+    queryParams: [
+      { name: "min_score", type: "integer", placeholder: "70", desc: "Minimum notability score" },
+      { name: "since", type: "string", placeholder: "2026-06-19T00:00:00Z", desc: "Only include signals newer than this timestamp" },
+      { name: "limit", type: "integer", placeholder: "50", desc: "Max results (default 50, max 500)" },
+      { name: "offset", type: "integer", placeholder: "0", desc: "Pagination offset" },
+    ],
+    exampleResponse: `{
+  "status": "ok",
+  "notable": [
+    {
+      "signal_id": "navsig_01j...",
+      "signal_type": "route_hazard",
+      "asset_scope": ["ETH"],
+      "chain_scope": ["ethereum"],
+      "confidence": 0.85,
+      "notability": 85,
+      "summary": "Bridge congestion is elevated.",
+      "created_at": "2026-06-19T17:00:00Z"
+    }
+  ],
+  "pagination": { "limit": 50, "offset": 0, "count": 1, "has_more": false }
+}`,
+  },
+  {
+    path: "/api/maps/outcomes",
+    method: "POST",
+    description: "Append a consumer attestation for a WatchPrediction. Downstream agents use this to report whether they acted and what they observed.",
+    pathParams: [],
+    queryParams: [],
+    requestBody: {
+      example: {
+        watch_prediction_id: "wp_01j...",
+        consumer_id: "agent_alpha",
+        acted: true,
+        observed_direction: "inflow",
+        observed_magnitude: "moderate",
+        notes: "Observed matching bridge inflow after acting.",
+        created_at: "2026-06-19T17:00:00Z",
+      },
+    },
+    exampleResponse: `{
+  "status": "ok",
+  "attestation": {
+    "id": "ca_...",
+    "watch_prediction_id": "wp_01j...",
+    "consumer_id": "agent_alpha",
+    "acted": true,
+    "observed_direction": "inflow",
+    "observed_magnitude": "moderate",
+    "notes": "Observed matching bridge inflow after acting.",
+    "created_at": "2026-06-19T17:00:00Z"
+  }
+}`,
+  },
+  {
     path: "/api/story-types",
     description: "Returns all StoryTypeDefinitions — the taxonomy of on-chain story types that Maps agents interpret as navigation evidence.",
     pathParams: [],
@@ -314,21 +468,31 @@ function buildFullUrl(path, pathValues, queryValues) {
   return buildResolvedPath(path, pathValues) + buildQueryString(queryValues);
 }
 
-function genCode(tab, fullUrl) {
+function genCode(tab, fullUrl, method = "GET", requestBody = null) {
   const fullHref = `${BASE}${fullUrl}`;
+  const bodyText = requestBody ? JSON.stringify(requestBody.example, null, 2) : "";
   switch (tab) {
     case "curl":
-      return `curl "${fullHref}"`;
+      return method === "GET"
+        ? `curl "${fullHref}"`
+        : `curl -X ${method} "${fullHref}" \\
+  -H "Accept: application/json" \\
+  -H "Content-Type: application/json" \\
+  --data '${bodyText}'`;
     case "node":
       return `const res = await fetch("${fullHref}", {
-  headers: { "Accept": "application/json" },
+  method: "${method}",
+  headers: {
+    "Accept": "application/json"${requestBody ? ',\n    "Content-Type": "application/json"' : ""}
+  }${requestBody ? `,\n  body: JSON.stringify(${bodyText})` : ""}
 });
 const data = await res.json();
 console.log(JSON.stringify(data, null, 2));`;
     case "python":
-      return `import requests
+      return `import json
+import requests
 
-r = requests.get("${fullHref}")
+${requestBody ? `payload = json.loads("""${bodyText}""")\n` : ""}r = requests.${method === "GET" ? "get" : "post"}(${JSON.stringify(fullHref)}${requestBody ? ", json=payload" : ""})
 r.raise_for_status()
 print(r.json())`;
     case "c":
@@ -346,9 +510,11 @@ int main(void) {
 
     struct curl_slist *hdrs =
         curl_slist_append(NULL, "Accept: application/json");
+${requestBody ? '    hdrs = curl_slist_append(hdrs, "Content-Type: application/json");\n' : ""}
 
     curl_easy_setopt(curl, CURLOPT_URL, "${fullHref}");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hdrs);
+${requestBody ? `    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, ${JSON.stringify(bodyText)});\n` : ""}
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, stdout);
 
@@ -364,7 +530,8 @@ int main(void) {
 }
 
 function EndpointCard({ endpoint }) {
-  const { path, description, pathParams, queryParams, exampleResponse } = endpoint;
+  const { path, description, pathParams, queryParams, exampleResponse, requestBody } = endpoint;
+  const method = endpoint.method || "GET";
 
   const [collapsed, setCollapsed] = useState(true);
   const [pathValues, setPathValues] = useState(
@@ -387,7 +554,12 @@ function EndpointCard({ endpoint }) {
     setFetchError(null);
     try {
       const res = await fetch(`${BASE}${fullUrl}`, {
-        headers: { Accept: "application/json" },
+        method,
+        headers: {
+          Accept: "application/json",
+          ...(requestBody ? { "Content-Type": "application/json" } : {}),
+        },
+        ...(requestBody ? { body: JSON.stringify(requestBody.example) } : {}),
       });
       const text = await res.text();
       let data;
@@ -429,7 +601,7 @@ function EndpointCard({ endpoint }) {
         el(
           "div",
           { className: "api-route" },
-          el("span", { className: "api-method" }, "GET"),
+          el("span", { className: "api-method" }, method),
           el("code", { className: "api-path" }, path)
         ),
         el("div", { className: "api-description" }, description)
@@ -553,13 +725,20 @@ function EndpointCard({ endpoint }) {
                           setQueryValues({ ...queryValues, [p.name]: e.target.value }),
                       })
                 )
-              )
+            )
+          ),
+          requestBody &&
+            el(
+              "div",
+              { className: "try-it-body-preview" },
+              el("p", { className: "panel-label" }, "Request body"),
+              el("pre", { className: "code-block" }, JSON.stringify(requestBody.example, null, 2))
             ),
 
           el(
             "div",
             { className: "try-it-run-row" },
-            el("code", { className: "try-it-url" }, `GET ${BASE}${fullUrl}`),
+            el("code", { className: "try-it-url" }, `${method} ${BASE}${fullUrl}`),
             el(
               "button",
               {
@@ -618,7 +797,7 @@ function EndpointCard({ endpoint }) {
               )
             )
           ),
-          el("pre", { className: "code-block" }, genCode(codeTab, fullUrl))
+          el("pre", { className: "code-block" }, genCode(codeTab, fullUrl, method, requestBody))
         ),
 
         // Example Response
@@ -662,7 +841,7 @@ export function ApiDocsPage() {
       el(
         "p",
         null,
-        "The E3D Maps API is a read-only REST API designed for agents. All endpoints return JSON. Base URL: ",
+        "The E3D Maps API is a JSON REST API designed for agents. Most endpoints are read-only; outcome attestations are append-only writes. Base URL: ",
         el("code", null, BASE),
         ". No authentication required."
       ),

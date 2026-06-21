@@ -2,10 +2,8 @@ import { html, useEffect, useState } from "../vendor.js";
 import { formatConfidence, formatDateTime, titleCaseLabel, toArray } from "../formatters.js";
 import { FlowGraph } from "../components/FlowGraph.js";
 import { RECOMMENDATION_ACTION_CLASSES } from "../utils/recommendationActionClasses.js";
-import { deriveTrackRecord } from "../utils/calibration.js";
 
 const AUTO_REFRESH_MS = 60_000;
-const NEWS_STALE_MINUTES = 15;
 const CROSS_CHAIN_LIMITS = {
   top_routes: 3,
   active_hazards: 3,
@@ -29,33 +27,6 @@ function collectRejectedMessages(results) {
   return [...messages];
 }
 
-function formatRelativeUpdatedAt(value) {
-  if (!value) {
-    return { label: "Update time unavailable", isStale: true };
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return { label: `Updated ${value}`, isStale: true };
-  }
-
-  const deltaMs = Math.max(0, Date.now() - date.getTime());
-  const deltaMinutes = Math.round(deltaMs / 60_000);
-  const deltaHours = Math.round(deltaMs / 3_600_000);
-  const deltaDays = Math.round(deltaMs / 86_400_000);
-
-  let label = "Updated just now";
-  if (deltaMinutes >= 1 && deltaMinutes < 60) {
-    label = `Updated ${deltaMinutes} minute${deltaMinutes === 1 ? "" : "s"} ago`;
-  } else if (deltaMinutes >= 60 && deltaHours < 24) {
-    label = `Updated ${deltaHours} hour${deltaHours === 1 ? "" : "s"} ago`;
-  } else if (deltaHours >= 24) {
-    label = `Updated ${deltaDays} day${deltaDays === 1 ? "" : "s"} ago`;
-  }
-
-  return { label, isStale: deltaMs > NEWS_STALE_MINUTES * 60_000 };
-}
-
 function riskBadgeClass(riskLevel) {
   switch (riskLevel) {
     case "critical":
@@ -65,21 +36,6 @@ function riskBadgeClass(riskLevel) {
       return "badge-warning";
     default:
       return "badge-accent";
-  }
-}
-
-function stanceClass(stance) {
-  switch (stance) {
-    case "risk_on":
-      return "maps-news-hero stance-risk-on";
-    case "risk_off":
-      return "maps-news-hero stance-risk-off";
-    case "crowded":
-      return "maps-news-hero stance-crowded";
-    case "cautious":
-      return "maps-news-hero stance-cautious";
-    default:
-      return "maps-news-hero stance-neutral";
   }
 }
 
@@ -111,17 +67,28 @@ function CrossChainList({ items, emptyLabel, renderItem }) {
   `;
 }
 
+function predictionTitle(prediction) {
+  if (prediction?.question) return prediction.question;
+  if (prediction?.answer) return prediction.answer;
+  const origin = prediction?.origin || prediction?.source_chain || prediction?.asset || "Capital";
+  const destination = prediction?.destination || prediction?.target_chain || prediction?.chain || "next destination";
+  return `${titleCaseLabel(origin)} → ${titleCaseLabel(destination)}`;
+}
+
+function predictionSummary(prediction) {
+  return prediction?.reasoning || prediction?.evidence_summary || prediction?.answer || prediction?.description || "";
+}
+
 export function MapsHomePage({ api, navigate }) {
   const [state, setState] = useState({
     loading: true,
     refreshing: false,
     error: "",
     trafficState: null,
-    mapsNews: null,
     crossChainActivity: null,
     allSignals: [],
+    predictions: [],
     topRec: null,
-    calibration: null,
   });
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -138,11 +105,10 @@ export function MapsHomePage({ api, navigate }) {
 
       const results = await Promise.allSettled([
         api.getState(),
-        api.getNews(),
         api.getCrossChainActivity(),
         api.listSignals({ limit: 200 }),
+        api.listPredictions({ limit: 3 }),
         api.getRecommendations({ maxResults: 1 }),
-        api.getCalibration({ lookbackDays: 30 }),
       ]);
 
       if (cancelled) {
@@ -151,11 +117,10 @@ export function MapsHomePage({ api, navigate }) {
 
       const [
         trafficStateResult,
-        mapsNewsResult,
         crossChainResult,
         signalsResult,
+        predictionsResult,
         recommendationsResult,
-        calibrationResult,
       ] = results;
       const rejectedMessages = collectRejectedMessages(results);
 
@@ -164,11 +129,10 @@ export function MapsHomePage({ api, navigate }) {
         refreshing: false,
         error: rejectedMessages.length ? "Some homepage data is temporarily unavailable." : "",
         trafficState: resolveSettledValue(trafficStateResult),
-        mapsNews: resolveSettledValue(mapsNewsResult),
         crossChainActivity: resolveSettledValue(crossChainResult),
         allSignals: toArray(resolveSettledValue(signalsResult)?.signals),
+        predictions: toArray(resolveSettledValue(predictionsResult)?.predictions).slice(0, 3),
         topRec: resolveSettledValue(recommendationsResult)?.recommendations?.[0] || null,
-        calibration: resolveSettledValue(calibrationResult),
       });
     }
 
@@ -181,13 +145,10 @@ export function MapsHomePage({ api, navigate }) {
   }, [api, reloadToken]);
 
   const trafficState = state.trafficState;
-  const mapsNews = state.mapsNews;
   const crossChainActivity = state.crossChainActivity;
   const hasAnyHomepageData = Boolean(
-    trafficState || state.allSignals.length || mapsNews || hasCrossChainContent(crossChainActivity)
+    trafficState || state.allSignals.length || state.predictions.length || hasCrossChainContent(crossChainActivity)
   );
-  const newsTimestamp = formatRelativeUpdatedAt(mapsNews?.generated_at);
-  const trackRecord = deriveTrackRecord(state.calibration);
   const crossChainItems = {
     top_routes: toArray(crossChainActivity?.top_routes).slice(0, CROSS_CHAIN_LIMITS.top_routes),
     active_hazards: toArray(crossChainActivity?.active_hazards).slice(0, CROSS_CHAIN_LIMITS.active_hazards),
@@ -222,55 +183,45 @@ export function MapsHomePage({ api, navigate }) {
     ${state.loading
       ? html`<p className="empty-copy">Loading current map state...</p>`
       : html`
-          <section className=${stanceClass(mapsNews?.stance)}>
-            <div className="maps-news-copy">
-              <p className="eyebrow">Maps News</p>
-              ${mapsNews
-                ? html`
-                    <h3>${mapsNews.headline}</h3>
-                    <p className="maps-news-summary">${mapsNews.summary}</p>
-                    <div className="maps-news-meta">
-                      <span className=${newsTimestamp.isStale ? "maps-news-timestamp is-stale" : "maps-news-timestamp"}>
-                        ${newsTimestamp.label}
-                      </span>
-                      <span className="maps-news-meta-sep">•</span>
-                      <span className="maps-news-meta-value">${titleCaseLabel(mapsNews.stance)}</span>
-                    </div>
-                    <div className="maps-news-tags">
-                      ${toArray(mapsNews.tags).map(
-                        (tag) => html`<span key=${tag} className="badge badge-neutral">${titleCaseLabel(tag)}</span>`
-                      )}
-                    </div>
-                  `
-                : html`
-                    <h3>Maps News is warming up.</h3>
-                    <p className="maps-news-summary">
-                      The homepage bulletin will appear here once the latest market brief has been published.
-                    </p>
-                  `}
+          <section className="panel predictions-preview">
+            <div className="predictions-preview-header">
+              <div>
+                <p className="panel-label">Predictions</p>
+                <h3>Forward-looking capital moves</h3>
+              </div>
+              <a
+                href="/signals"
+                className="rec-preview-link"
+                onClick=${(event) => {
+                  event.preventDefault();
+                  navigate("/signals");
+                }}
+              >
+                View signals →
+              </a>
             </div>
-          </section>
-
-          <a
-            href="/calibration"
-            className="track-record-strip"
-            onClick=${(event) => {
-              event.preventDefault();
-              navigate("/calibration");
-            }}
-          >
-            <span className="panel-label">Track Record · 30d</span>
-            ${trackRecord.scored
+            ${state.predictions.length
               ? html`
-                  <span className="track-record-stats">
-                    <span className="score-chip">Hit rate <strong>${formatConfidence(trackRecord.hitRate)}</strong></span>
-                    <span className="score-chip">Calibration error <strong>${formatConfidence(trackRecord.calibrationError)}</strong></span>
-                    <span className="score-chip">${trackRecord.totalScored.toLocaleString()} scored</span>
-                  </span>
+                  <div className="prediction-card-grid">
+                    ${state.predictions.map(
+                      (prediction) => html`
+                        <article key=${prediction.id} className="prediction-card">
+                          <div className="prediction-card-topline">
+                            <span className="badge badge-accent">${titleCaseLabel(prediction.signal_type || "prediction")}</span>
+                            <span className="score-chip">${formatConfidence(prediction.confidence)}</span>
+                          </div>
+                          <h4>${predictionTitle(prediction)}</h4>
+                          ${predictionSummary(prediction)
+                            ? html`<p>${predictionSummary(prediction)}</p>`
+                            : html`<p className="empty-copy">No summary attached to this prediction yet.</p>`}
+                          <span className="prediction-card-date">${formatDateTime(prediction.created_at)}</span>
+                        </article>
+                      `
+                    )}
+                  </div>
                 `
-              : html`<span className="track-record-stats"><span className="score-chip">Scoring in progress — first outcomes pending</span></span>`}
-            <span className="track-record-cta">View track record →</span>
-          </a>
+              : html`<p className="empty-copy">No forward-looking predictions are available yet.</p>`}
+          </section>
 
           <section className="panel" style=${{ padding: 0, overflow: "hidden", marginBottom: "1.5rem" }}>
             <div style=${{ padding: "1rem 1.25rem 0.5rem" }}>
