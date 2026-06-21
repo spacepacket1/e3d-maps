@@ -1,0 +1,94 @@
+# E3D Maps — Navigation Intelligence for Autonomous Agents
+
+E3D Maps is a real-time on-chain navigation intelligence API for autonomous trading and research agents. It tracks capital flows, hazards, route predictions, and market states across EVM chains.
+
+## What E3D Maps Provides
+
+- **Navigation signals** — directional on-chain flow signals with confidence scores
+- **Route predictions** — predicted capital routes between protocols and chains
+- **Hazard alerts** — smart money risk signals (liquidation zones, congestion, anomalies)
+- **Traffic state** — current aggregate market bias and dominant flows
+- **Graph topology** — liquidity graph with node-level flow data
+- **Cross-chain activity** — Ethereum ↔ L2 capital movement state
+- **Recommendations** — ranked actionable routes for a given objective
+
+## API Base URL
+
+https://maps.e3d.ai/api
+
+## Authentication
+
+E3D Maps uses x402-compatible prepaid credits in **E3D Token** on **Base L2**.
+
+1. Buy E3D on Uniswap: `0x6488861b401F427D13B6619C77C297366bCf6386` (Ethereum mainnet)
+2. Bridge to Base via Wormhole
+3. Transfer wrapped E3D to treasury → POST /api/maps/credits → receive API key
+4. Send `Authorization: Bearer <key>` on all paid calls
+
+Full guide: https://maps.e3d.ai/docs/x402-agent-guide
+
+## Free Endpoints (no key required)
+
+- GET /api/maps/news — recent E3D market news brief
+- GET /api/maps/news/recent — same, most recent
+- GET /api/maps/state — current traffic state summary
+- GET /api/maps/calibration — model calibration metrics
+
+## Paid Endpoints
+
+### Standard (10 credits = 0.01 wE3D per call)
+- GET /api/maps/signals — list navigation signals (params: limit, signal_type, asset)
+- GET /api/maps/signals/:id — single signal detail
+- GET /api/maps/routes — route predictions (params: limit)
+- GET /api/maps/hazards — active hazard signals
+- GET /api/maps/predictions — agent watch predictions
+- GET /api/maps/destinations — top destination protocols
+- GET /api/maps/congestion — congestion zone data
+- GET /api/maps/graph — full liquidity flow graph
+- GET /api/maps/graph/:node — single node view
+
+### Premium (50 credits = 0.05 wE3D per call)
+- GET /api/maps/recommendations — ranked action recommendations (params: objective, asset, storyType, maxResults)
+- GET /api/maps/cross-chain — Ethereum↔L2 cross-chain state
+- GET /api/maps/notable — notable signal events
+- GET /agents/predictions — all agent predictions
+- GET /agents/drafts — agent draft predictions
+
+### Write (100 credits = 0.10 wE3D per call)
+- POST /api/maps/outcomes — record outcome for a prediction
+
+## Credit Management
+
+- GET /api/maps/credits — check credit balance (requires API key)
+- POST /api/maps/credits — purchase credits with a Base tx hash
+
+Credit rate: 1 credit = 0.001 wE3D. Minimum purchase: 500 credits (0.5 wE3D).
+
+Response headers: X-Credits-Remaining, X-Credits-Used
+
+## x402 Payment Protocol
+
+On missing/insufficient payment, the server returns HTTP 402 with an `accepts` array describing payment requirements. The `purchasePath` field specifies where to register a credit-funding Base transaction.
+
+## Agent Identity & Discounts
+
+Register an agent NFT via E3DNFTManager (0xeED4620ff525101Ffcf7327378232CA9EF778D47) to earn discounts:
+- Tier 1: 20% off
+- Tier 2: 40% off
+- Tier 3: 60% off
+
+Pass `agent_tier` when registering credits to apply the discount.
+
+## Example: openclaw integration
+
+```json
+{
+  "dataSources": {
+    "e3d-maps": {
+      "baseUrl": "https://maps.e3d.ai/api",
+      "auth": { "type": "bearer", "keyEnvVar": "E3D_MAPS_API_KEY" },
+      "paymentScheme": "x402-prepay"
+    }
+  }
+}
+```

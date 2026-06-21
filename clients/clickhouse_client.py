@@ -302,6 +302,25 @@ class ClickHouseClient:
             self._request_executor(query.encode("utf-8"))
         return len(updates)
 
+    def select_rows(self, sql: str) -> list[dict[str, Any]]:
+        """Execute a SELECT query and return the result as a list of dicts.
+
+        Appends ``FORMAT JSONEachRow`` if not already present.
+        """
+        normalized = sql.rstrip()
+        if "FORMAT " not in normalized.upper():
+            normalized += " FORMAT JSONEachRow"
+        raw = self._request_executor(normalized.encode("utf-8"))
+        rows: list[dict[str, Any]] = []
+        for line in raw.decode("utf-8", errors="replace").splitlines():
+            stripped = line.strip()
+            if stripped:
+                try:
+                    rows.append(json.loads(stripped))
+                except (ValueError, KeyError):
+                    pass
+        return rows
+
     def _insert_models(
         self,
         *,

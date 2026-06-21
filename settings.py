@@ -81,6 +81,10 @@ class MapsRunnerSettings:
     min_signal_confidence: float = 0.5
     min_event_score: int = 60
     maps_public_api_base: str = "https://e3d.ai"
+    # On-chain payment gating (E3DNFTManager subscription checks)
+    eth_rpc_url: str = ""
+    eth_nft_manager_address: str = "0xeED4620ff525101Ffcf7327378232CA9EF778D47"
+    maps_api_auth_enabled: bool = False
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> "MapsRunnerSettings":
@@ -117,4 +121,9 @@ class MapsRunnerSettings:
             maps_public_api_base=(
                 env.get("MAPS_PUBLIC_API_BASE") or env.get("E3D_BASE_URL") or "https://e3d.ai"
             ).rstrip("/"),
+            eth_rpc_url=env.get("ETH_RPC_URL") or "",
+            eth_nft_manager_address=(
+                env.get("ETH_NFT_MANAGER_ADDRESS") or "0xeED4620ff525101Ffcf7327378232CA9EF778D47"
+            ),
+            maps_api_auth_enabled=_parse_bool(env.get("MAPS_API_AUTH_ENABLED")),
         )
