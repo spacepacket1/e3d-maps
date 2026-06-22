@@ -178,5 +178,11 @@
     "question": "Are agent swarms forming around any non-ETH-DeFi destination such as Solana, L2s, or perpetuals?",
     "time_horizon_hours": 24,
     "enabled": true
+  },
+  {
+    "agent": "reflexivity_agent",
+    "question": "Is this route elevated-risk because Maps consumers are crowding it?",
+    "time_horizon_hours": 6,
+    "enabled": false
   }
 ]

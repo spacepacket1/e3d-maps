@@ -10,15 +10,20 @@ from urllib.request import Request, urlopen
 
 UTC = timezone.utc
 
+from schemas.adapter_health_report import AdapterHealthReport
 from schemas.consumer_attestation import ConsumerAttestation
 from schemas.cross_chain_activity_state import CrossChainActivityState
 from schemas.flow_graph import FlowEdge, FlowGraphSnapshot
 from schemas.maps_news_brief import MapsNewsBrief
 from schemas.navigation_signal import NavigationSignal
 from schemas.prediction_outcome import PredictionOutcome
+from schemas.route_health_report import RouteHealthReport
 from schemas.route_prediction import RoutePrediction
 from schemas.shared_enums import OutcomeStatus
+from schemas.signal_demand_state import QueryAccessLog, SignalDemandState
+from schemas.signal_rate_anomaly import SignalRateAnomaly
 from schemas.signal_utility_score import SignalUtilityScore
+from schemas.story_hypothesis import StoryHypothesis
 from schemas.traffic_state import TrafficState
 from schemas.watch_draft import WatchDraft
 from schemas.watch_prediction import WatchPrediction
@@ -257,6 +262,90 @@ class ClickHouseClient:
             records=records,
             schema_model=FlowEdge,
             serializer=self._serialize_flow_edge,
+        )
+
+    # ------------------------------------------------------------------ #
+    # Agent loop insert methods (Loops 1–7)                              #
+    # ------------------------------------------------------------------ #
+
+    def insert_query_access_log(self, record: QueryAccessLog | dict[str, Any]) -> int:
+        return self.insert_query_access_logs([record])
+
+    def insert_query_access_logs(
+        self, records: Iterable[QueryAccessLog | dict[str, Any]]
+    ) -> int:
+        return self._insert_models(
+            table_name="QueryAccessLogs",
+            records=records,
+            schema_model=QueryAccessLog,
+            serializer=self._serialize_query_access_log,
+        )
+
+    def insert_signal_demand_state(self, record: SignalDemandState | dict[str, Any]) -> int:
+        return self.insert_signal_demand_states([record])
+
+    def insert_signal_demand_states(
+        self, records: Iterable[SignalDemandState | dict[str, Any]]
+    ) -> int:
+        return self._insert_models(
+            table_name="SignalDemandStates",
+            records=records,
+            schema_model=SignalDemandState,
+            serializer=self._serialize_signal_demand_state,
+        )
+
+    def insert_signal_rate_anomaly(self, record: SignalRateAnomaly | dict[str, Any]) -> int:
+        return self.insert_signal_rate_anomalies([record])
+
+    def insert_signal_rate_anomalies(
+        self, records: Iterable[SignalRateAnomaly | dict[str, Any]]
+    ) -> int:
+        return self._insert_models(
+            table_name="SignalRateAnomalies",
+            records=records,
+            schema_model=SignalRateAnomaly,
+            serializer=self._serialize_signal_rate_anomaly,
+        )
+
+    def insert_route_health_report(self, record: RouteHealthReport | dict[str, Any]) -> int:
+        return self.insert_route_health_reports([record])
+
+    def insert_route_health_reports(
+        self, records: Iterable[RouteHealthReport | dict[str, Any]]
+    ) -> int:
+        return self._insert_models(
+            table_name="RouteHealthReports",
+            records=records,
+            schema_model=RouteHealthReport,
+            serializer=self._serialize_route_health_report,
+        )
+
+    def insert_adapter_health_report(
+        self, record: AdapterHealthReport | dict[str, Any]
+    ) -> int:
+        return self.insert_adapter_health_reports([record])
+
+    def insert_adapter_health_reports(
+        self, records: Iterable[AdapterHealthReport | dict[str, Any]]
+    ) -> int:
+        return self._insert_models(
+            table_name="AdapterHealthReports",
+            records=records,
+            schema_model=AdapterHealthReport,
+            serializer=self._serialize_adapter_health_report,
+        )
+
+    def insert_story_hypothesis(self, record: StoryHypothesis | dict[str, Any]) -> int:
+        return self.insert_story_hypotheses([record])
+
+    def insert_story_hypotheses(
+        self, records: Iterable[StoryHypothesis | dict[str, Any]]
+    ) -> int:
+        return self._insert_models(
+            table_name="StoryHypotheses",
+            records=records,
+            schema_model=StoryHypothesis,
+            serializer=self._serialize_story_hypothesis,
         )
 
     def update_navigation_signal_outcome_status(
@@ -621,6 +710,116 @@ class ClickHouseClient:
             "hazard_level": record.hazard_level.value,
             "source_signal_ids": record.source_signal_ids,
             "edge_status": record.edge_status.value,
+            "created_at": ClickHouseClient._format_datetime(record.created_at),
+        }
+
+    @staticmethod
+    def _serialize_query_access_log(record: QueryAccessLog) -> dict[str, Any]:
+        return {
+            "id": record.id or "",
+            "endpoint": record.endpoint,
+            "destination_filter": record.destination_filter or "",
+            "signal_type_filter": record.signal_type_filter or "",
+            "time_horizon_hours_filter": record.time_horizon_hours_filter,
+            "caller_id_hash": record.caller_id_hash,
+            "requested_at": ClickHouseClient._format_datetime(record.requested_at),
+        }
+
+    @staticmethod
+    def _serialize_signal_demand_state(record: SignalDemandState) -> dict[str, Any]:
+        return {
+            "id": record.id or "",
+            "window_start": ClickHouseClient._format_datetime(record.window_start),
+            "window_end": ClickHouseClient._format_datetime(record.window_end),
+            "total_queries": record.total_queries,
+            "queries_by_destination_json": ClickHouseClient._json_string(
+                [d.model_dump() for d in record.queries_by_destination]
+            ),
+            "queries_by_signal_type_json": ClickHouseClient._json_string(
+                [s.model_dump() for s in record.queries_by_signal_type]
+            ),
+            "avg_requested_time_horizon_hours": record.avg_requested_time_horizon_hours,
+            "urgency_trend": record.urgency_trend,
+            "top_destinations_json": ClickHouseClient._json_string(record.top_destinations),
+            "demand_surge_destinations_json": ClickHouseClient._json_string(
+                record.demand_surge_destinations
+            ),
+            "created_at": ClickHouseClient._format_datetime(record.created_at),
+        }
+
+    @staticmethod
+    def _serialize_signal_rate_anomaly(record: SignalRateAnomaly) -> dict[str, Any]:
+        return {
+            "id": record.id or "",
+            "signal_type": record.signal_type,
+            "baseline_rate_per_hour": record.baseline_rate_per_hour,
+            "observed_rate_per_hour": record.observed_rate_per_hour,
+            "spike_ratio": record.spike_ratio,
+            "severity": record.severity.value,
+            "detected_at": ClickHouseClient._format_datetime(record.detected_at),
+        }
+
+    @staticmethod
+    def _serialize_route_health_report(record: RouteHealthReport) -> dict[str, Any]:
+        return {
+            "id": record.id or "",
+            "protocol_or_chain": record.protocol_or_chain,
+            "report_scope": record.report_scope,
+            "health_score": record.health_score,
+            "traffic_trend": record.traffic_trend,
+            "congestion_level": record.congestion_level,
+            "hazard_level": record.hazard_level,
+            "route_emergence_count": record.route_emergence_count,
+            "route_closure_count": record.route_closure_count,
+            "dominant_inflow_source": record.dominant_inflow_source or "",
+            "dominant_outflow_destination": record.dominant_outflow_destination or "",
+            "supporting_signal_ids": record.supporting_signal_ids,
+            "summary": record.summary,
+            "created_by_agent": record.created_by_agent,
+            "created_at": ClickHouseClient._format_datetime(record.created_at),
+        }
+
+    @staticmethod
+    def _serialize_adapter_health_report(record: AdapterHealthReport) -> dict[str, Any]:
+        return {
+            "id": record.id or "",
+            "adapter_name": record.adapter_name,
+            "evaluation_window_days": record.evaluation_window_days,
+            "total_scored_signals": record.total_scored_signals,
+            "overall_calibration_error": record.overall_calibration_error,
+            "accuracy_by_signal_type_json": ClickHouseClient._json_string(
+                record.accuracy_by_signal_type
+            ),
+            "confidence_buckets_json": ClickHouseClient._json_string(
+                [b.model_dump() for b in record.confidence_buckets]
+            ),
+            "drift_detected": int(record.drift_detected),
+            "drift_severity": record.drift_severity.value,
+            "retraining_recommended": int(record.retraining_recommended),
+            "notes": record.notes,
+            "created_at": ClickHouseClient._format_datetime(record.created_at),
+        }
+
+    @staticmethod
+    def _serialize_story_hypothesis(record: StoryHypothesis) -> dict[str, Any]:
+        return {
+            "id": record.id or "",
+            "proposed_story_type": record.proposed_story_type,
+            "description": record.description,
+            "detection_rationale": record.detection_rationale,
+            "supporting_on_chain_patterns_json": ClickHouseClient._json_string(
+                record.supporting_on_chain_patterns
+            ),
+            "related_existing_story_types_json": ClickHouseClient._json_string(
+                record.related_existing_story_types
+            ),
+            "example_evidence_json": ClickHouseClient._json_string(
+                [e.model_dump() for e in record.example_evidence]
+            ),
+            "supporting_signal_ids": record.supporting_signal_ids,
+            "confidence": record.confidence,
+            "status": record.status.value,
+            "created_by_agent": record.created_by_agent,
             "created_at": ClickHouseClient._format_datetime(record.created_at),
         }
 

@@ -75,6 +75,14 @@ class MapsRunnerSettings:
     cross_chain_activity_interval_seconds: int = 300
     maps_news_interval_seconds: int = 300
     watch_interval_seconds: int = 300
+    query_demand_interval_seconds: int = 900
+    reflexivity_interval_seconds: int = 600
+    narrative_velocity_interval_seconds: int = 300
+    anomaly_monitor_interval_seconds: int = 300
+    route_health_interval_seconds: int = 3600
+    adapter_health_interval_seconds: int = 86400
+    story_hypothesis_interval_seconds: int = 86400
+    bridge_synthesis_interval_seconds: int = 360
     scheduler_tick_seconds: int = 60
     use_sample_context: bool = False
     use_sample_responses: bool = False
@@ -113,6 +121,24 @@ class MapsRunnerSettings:
             ),
             maps_news_interval_seconds=int(env.get("MAPS_NEWS_INTERVAL_SECONDS") or 300),
             watch_interval_seconds=int(env.get("WATCH_INTERVAL_SECONDS") or 300),
+            query_demand_interval_seconds=int(env.get("MAPS_QUERY_DEMAND_INTERVAL_SECONDS") or 900),
+            reflexivity_interval_seconds=int(env.get("MAPS_REFLEXIVITY_INTERVAL_SECONDS") or 600),
+            narrative_velocity_interval_seconds=int(
+                env.get("MAPS_NARRATIVE_VELOCITY_INTERVAL_SECONDS") or 300
+            ),
+            anomaly_monitor_interval_seconds=int(
+                env.get("MAPS_ANOMALY_MONITOR_INTERVAL_SECONDS") or 300
+            ),
+            route_health_interval_seconds=int(env.get("MAPS_ROUTE_HEALTH_INTERVAL_SECONDS") or 3600),
+            adapter_health_interval_seconds=int(
+                env.get("MAPS_ADAPTER_HEALTH_INTERVAL_SECONDS") or 86400
+            ),
+            story_hypothesis_interval_seconds=int(
+                env.get("MAPS_STORY_HYPOTHESIS_INTERVAL_SECONDS") or 86400
+            ),
+            bridge_synthesis_interval_seconds=int(
+                env.get("MAPS_BRIDGE_SYNTHESIS_INTERVAL_SECONDS") or 360
+            ),
             scheduler_tick_seconds=int(env.get("MAPS_SCHEDULER_TICK_SECONDS") or 60),
             use_sample_context=_parse_bool(env.get("MAPS_RUNNER_USE_SAMPLE_CONTEXT")),
             use_sample_responses=_parse_bool(env.get("MAPS_RUNNER_USE_SAMPLE_RESPONSES")),

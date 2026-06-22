@@ -55,6 +55,14 @@ class MapsJobScheduler:
     DEFAULT_CROSS_CHAIN_ACTIVITY_INTERVAL = 300
     DEFAULT_MAPS_NEWS_INTERVAL = 300
     DEFAULT_WATCH_INTERVAL = 300
+    DEFAULT_QUERY_DEMAND_INTERVAL = 900
+    DEFAULT_REFLEXIVITY_INTERVAL = 600
+    DEFAULT_NARRATIVE_VELOCITY_INTERVAL = 300
+    DEFAULT_ANOMALY_MONITOR_INTERVAL = 300
+    DEFAULT_ROUTE_HEALTH_INTERVAL = 3600
+    DEFAULT_ADAPTER_HEALTH_INTERVAL = 86400
+    DEFAULT_STORY_HYPOTHESIS_INTERVAL = 86400
+    DEFAULT_BRIDGE_SYNTHESIS_INTERVAL = 360
     DEFAULT_TICK_SECONDS = 60
 
     def __init__(
@@ -107,6 +115,14 @@ class MapsJobScheduler:
         cross_chain_activity_fn: Callable[[], None] | None = None,
         maps_news_fn: Callable[[], None] | None = None,
         watch_fn: Callable[[], None] | None = None,
+        query_demand_fn: Callable[[], None] | None = None,
+        reflexivity_fn: Callable[[], None] | None = None,
+        narrative_velocity_fn: Callable[[], None] | None = None,
+        anomaly_monitor_fn: Callable[[], None] | None = None,
+        route_health_fn: Callable[[], None] | None = None,
+        adapter_health_fn: Callable[[], None] | None = None,
+        story_hypothesis_fn: Callable[[], None] | None = None,
+        bridge_synthesis_fn: Callable[[], None] | None = None,
         signals_interval: int = DEFAULT_SIGNALS_INTERVAL,
         scoring_interval: int = DEFAULT_SCORING_INTERVAL,
         utility_interval: int = DEFAULT_UTILITY_INTERVAL,
@@ -116,6 +132,14 @@ class MapsJobScheduler:
         cross_chain_activity_interval: int = DEFAULT_CROSS_CHAIN_ACTIVITY_INTERVAL,
         maps_news_interval: int = DEFAULT_MAPS_NEWS_INTERVAL,
         watch_interval: int = DEFAULT_WATCH_INTERVAL,
+        query_demand_interval: int = DEFAULT_QUERY_DEMAND_INTERVAL,
+        reflexivity_interval: int = DEFAULT_REFLEXIVITY_INTERVAL,
+        narrative_velocity_interval: int = DEFAULT_NARRATIVE_VELOCITY_INTERVAL,
+        anomaly_monitor_interval: int = DEFAULT_ANOMALY_MONITOR_INTERVAL,
+        route_health_interval: int = DEFAULT_ROUTE_HEALTH_INTERVAL,
+        adapter_health_interval: int = DEFAULT_ADAPTER_HEALTH_INTERVAL,
+        story_hypothesis_interval: int = DEFAULT_STORY_HYPOTHESIS_INTERVAL,
+        bridge_synthesis_interval: int = DEFAULT_BRIDGE_SYNTHESIS_INTERVAL,
         tick_seconds: int = DEFAULT_TICK_SECONDS,
         sleep_fn: Callable[[float], None] = time.sleep,
         now_fn: Callable[[], float] = time.time,
@@ -191,6 +215,70 @@ class MapsJobScheduler:
                     interval_seconds=watch_interval,
                 )
             )
+        if query_demand_fn is not None:
+            jobs.append(
+                JobConfig(
+                    name="aggregate_query_demand",
+                    run_fn=query_demand_fn,
+                    interval_seconds=query_demand_interval,
+                )
+            )
+        if reflexivity_fn is not None:
+            jobs.append(
+                JobConfig(
+                    name="detect_reflexivity",
+                    run_fn=reflexivity_fn,
+                    interval_seconds=reflexivity_interval,
+                )
+            )
+        if narrative_velocity_fn is not None:
+            jobs.append(
+                JobConfig(
+                    name="compute_narrative_velocity",
+                    run_fn=narrative_velocity_fn,
+                    interval_seconds=narrative_velocity_interval,
+                )
+            )
+        if anomaly_monitor_fn is not None:
+            jobs.append(
+                JobConfig(
+                    name="monitor_anomalies",
+                    run_fn=anomaly_monitor_fn,
+                    interval_seconds=anomaly_monitor_interval,
+                )
+            )
+        if route_health_fn is not None:
+            jobs.append(
+                JobConfig(
+                    name="generate_route_health_reports",
+                    run_fn=route_health_fn,
+                    interval_seconds=route_health_interval,
+                )
+            )
+        if adapter_health_fn is not None:
+            jobs.append(
+                JobConfig(
+                    name="monitor_adapter_health",
+                    run_fn=adapter_health_fn,
+                    interval_seconds=adapter_health_interval,
+                )
+            )
+        if story_hypothesis_fn is not None:
+            jobs.append(
+                JobConfig(
+                    name="propose_story_hypotheses",
+                    run_fn=story_hypothesis_fn,
+                    interval_seconds=story_hypothesis_interval,
+                )
+            )
+        if bridge_synthesis_fn is not None:
+            jobs.append(
+                JobConfig(
+                    name="synthesize_bridge_signals",
+                    run_fn=bridge_synthesis_fn,
+                    interval_seconds=bridge_synthesis_interval,
+                )
+            )
         return cls(jobs=jobs, tick_seconds=tick_seconds, sleep_fn=sleep_fn, now_fn=now_fn)
 
 
@@ -214,6 +302,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     import jobs.assemble_cross_chain_activity as cross_chain_mod
     import jobs.generate_maps_news as maps_news_mod
     import jobs.run_watch_agent as watch_mod
+    import jobs.aggregate_query_demand as query_demand_mod
+    import jobs.detect_reflexivity as reflexivity_mod
+    import jobs.compute_narrative_velocity as narrative_velocity_mod
+    import jobs.monitor_anomalies as anomaly_mod
+    import jobs.generate_route_health_reports as route_health_mod
+    import jobs.monitor_adapter_health as adapter_health_mod
+    import jobs.propose_story_hypotheses as story_hypothesis_mod
+    import jobs.synthesize_bridge_signals as bridge_synthesis_mod
     from agents.runner import MapsRunner
     from agents.qwen_orchestrator import QwenOrchestrator
     from settings import MapsRuntimeSettings, MapsRunnerSettings
@@ -241,6 +337,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         cross_chain_activity_fn=lambda: cross_chain_mod.run(dry_run=dry_run),
         maps_news_fn=lambda: maps_news_mod.run(dry_run=dry_run),
         watch_fn=lambda: watch_mod.run(dry_run=dry_run),
+        query_demand_fn=lambda: query_demand_mod.run(dry_run=dry_run),
+        reflexivity_fn=lambda: reflexivity_mod.run(dry_run=dry_run),
+        narrative_velocity_fn=lambda: narrative_velocity_mod.run(dry_run=dry_run),
+        anomaly_monitor_fn=lambda: anomaly_mod.run(dry_run=dry_run),
+        route_health_fn=lambda: route_health_mod.run(dry_run=dry_run),
+        adapter_health_fn=lambda: adapter_health_mod.run(dry_run=dry_run),
+        story_hypothesis_fn=lambda: story_hypothesis_mod.run(dry_run=dry_run),
+        bridge_synthesis_fn=lambda: bridge_synthesis_mod.run(dry_run=dry_run),
         signals_interval=runner_settings.run_interval_seconds,
         scoring_interval=runner_settings.scoring_interval_seconds,
         utility_interval=runner_settings.utility_interval_seconds,
@@ -250,6 +354,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         cross_chain_activity_interval=runner_settings.cross_chain_activity_interval_seconds,
         maps_news_interval=runner_settings.maps_news_interval_seconds,
         watch_interval=runner_settings.watch_interval_seconds,
+        query_demand_interval=runner_settings.query_demand_interval_seconds,
+        reflexivity_interval=runner_settings.reflexivity_interval_seconds,
+        narrative_velocity_interval=runner_settings.narrative_velocity_interval_seconds,
+        anomaly_monitor_interval=runner_settings.anomaly_monitor_interval_seconds,
+        route_health_interval=runner_settings.route_health_interval_seconds,
+        adapter_health_interval=runner_settings.adapter_health_interval_seconds,
+        story_hypothesis_interval=runner_settings.story_hypothesis_interval_seconds,
+        bridge_synthesis_interval=runner_settings.bridge_synthesis_interval_seconds,
         tick_seconds=runner_settings.scheduler_tick_seconds,
     )
 

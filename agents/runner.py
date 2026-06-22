@@ -23,6 +23,7 @@ from agents import (
     DestinationPredictionAgent,
     LiquidityForecastAgent,
     NarrativeAccelerationAgent,
+    ReflexivityAgent,
     RouteClosureAgent,
     RouteEmergenceAgent,
     RouteHazardAgent,
@@ -93,6 +94,7 @@ class MapsRunner:
         "capital_conviction_agent": CapitalConvictionAgent,
         "narrative_acceleration_agent": NarrativeAccelerationAgent,
         "agent_swarm_formation_agent": AgentSwarmFormationAgent,
+        "reflexivity_agent": ReflexivityAgent,
     }
 
     def __init__(

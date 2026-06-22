@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -90,17 +91,55 @@ def _maps_news_payload(news: Any) -> dict[str, Any]:
     }
 
 
+def _log_signal_query(
+    *,
+    signal_type: str | None,
+    destination: str | None,
+    time_horizon_hours: int | None,
+    caller_id: str | None,
+    clickhouse_client: Any | None,
+) -> None:
+    if clickhouse_client is None:
+        return
+    try:
+        from schemas.signal_demand_state import QueryAccessLog
+
+        raw_id = (caller_id or "anonymous").encode("utf-8")
+        caller_hash = hashlib.sha256(raw_id).hexdigest()[:16]
+        log = QueryAccessLog(
+            endpoint="/api/maps/signals",
+            destination_filter=destination or None,
+            signal_type_filter=signal_type or None,
+            time_horizon_hours_filter=time_horizon_hours,
+            caller_id_hash=caller_hash,
+            requested_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        )
+        clickhouse_client.insert_query_access_log(log)
+    except Exception:
+        pass  # Query logging must never break the API response.
+
+
 def get_maps_signals(
     service: MapsAPIService,
     *,
     signal_type: str | None = None,
     asset: str | None = None,
     chain: str | None = None,
+    destination: str | None = None,
     time_horizon_hours: int | None = None,
     min_confidence: float | None = None,
     limit: int = 50,
     offset: int = 0,
+    caller_id: str | None = None,
+    clickhouse_client: Any | None = None,
 ) -> RouteResponse:
+    _log_signal_query(
+        signal_type=signal_type,
+        destination=destination,
+        time_horizon_hours=time_horizon_hours,
+        caller_id=caller_id,
+        clickhouse_client=clickhouse_client,
+    )
     result = service.list_signals(
         signal_type=signal_type,
         asset=asset,

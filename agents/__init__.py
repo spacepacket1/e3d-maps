@@ -19,7 +19,10 @@ from agents.narrative_acceleration_agent import NarrativeAccelerationAgent
 from agents.outcome_scoring_agent import OutcomeScoringAgent
 from agents.route_closure_agent import RouteClosureAgent
 from agents.route_emergence_agent import RouteEmergenceAgent
+from agents.reflexivity_agent import ReflexivityAgent
 from agents.route_hazard_agent import RouteHazardAgent
+from agents.route_health_agent import RouteHealthAgent, RouteHealthAgentResult
+from agents.story_hypothesis_agent import StoryHypothesisAgent, StoryHypothesisAgentResult
 
 __all__ = [
     "AgentError",
@@ -39,7 +42,12 @@ __all__ = [
     "MapsNewsAgentResult",
     "NarrativeAccelerationAgent",
     "OutcomeScoringAgent",
+    "ReflexivityAgent",
     "RouteClosureAgent",
     "RouteEmergenceAgent",
     "RouteHazardAgent",
+    "RouteHealthAgent",
+    "RouteHealthAgentResult",
+    "StoryHypothesisAgent",
+    "StoryHypothesisAgentResult",
 ]

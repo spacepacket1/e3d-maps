@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
+try:
+    from datetime import UTC
+except ImportError:  # Python < 3.11
+    from datetime import timezone as _tz
+    UTC = _tz.utc  # type: ignore[assignment]
 from hashlib import sha1
 from typing import Any, Mapping, Sequence
 
