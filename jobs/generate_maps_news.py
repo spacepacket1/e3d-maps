@@ -114,6 +114,22 @@ def run(
                 "recent_signals": recent_signals,
             }
         )
+        if result.used_fallback:
+            import sys
+            print(
+                f"[maps_news] fallback triggered: {result.fallback_reason}",
+                file=sys.stderr,
+            )
+            # Skip writing if the fallback is identical to the previous brief —
+            # prevents flooding the DB with repeated boilerplate when the model
+            # consistently fails validation.
+            if (
+                previous_brief is not None
+                and result.brief.headline == previous_brief.headline
+                and result.brief.summary == previous_brief.summary
+            ):
+                print("[maps_news] brief unchanged from previous — skipping write", file=sys.stderr)
+                return result
         clickhouse_writer.insert_maps_news_brief(result.brief)
         return result
     finally:

@@ -49,8 +49,14 @@ class QwenClient:
             completions_path=settings.qwen_completions_path,
             default_model=settings.qwen_model,
             api_key=settings.qwen_api_key,
+            timeout=settings.qwen_timeout,
             request_executor=request_executor,
         )
+
+    @classmethod
+    def from_env(cls, *, request_executor=None) -> "QwenClient":
+        settings = MapsRuntimeSettings.from_env()
+        return cls.from_settings(settings, request_executor=request_executor)
 
     def generate(
         self,

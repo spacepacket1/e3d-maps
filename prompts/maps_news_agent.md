@@ -36,8 +36,8 @@ Required JSON shape:
 
 Hard output rules:
 
-- `headline`: 60-120 chars
-- `summary`: 160-420 chars
+- `headline`: 20-160 chars
+- `summary`: 80-600 chars
 - `stance`: exactly one of `risk_on`, `risk_off`, `neutral`, `cautious`, `crowded`
 - `tags`: 1 to 6 items
 - no newline characters in `headline`

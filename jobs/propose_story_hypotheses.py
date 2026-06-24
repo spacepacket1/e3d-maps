@@ -12,7 +12,7 @@ from typing import Sequence
 
 from clients.clickhouse_client import ClickHouseClient
 from clients.qwen_client import QwenClient
-from settings import MapsRunnerSettings
+from settings import MapsRunnerSettings, MapsRuntimeSettings
 
 LOOKBACK_DAYS: int = int(os.environ.get("MAPS_HYPOTHESIS_LOOKBACK_DAYS", "7"))
 CONFIDENCE_CEILING: float = float(os.environ.get("MAPS_HYPOTHESIS_CONFIDENCE_CEILING", "0.4"))
@@ -67,6 +67,7 @@ def run(
     from jobs.compute_signal_utility_scores import ClickHouseReadClient  # lazy to avoid UTC import
     from agents.story_hypothesis_agent import StoryHypothesisAgent
     settings = MapsRunnerSettings.from_env()
+    runtime_settings = MapsRuntimeSettings.from_env()
     ts = now or datetime.now(timezone.utc).replace(tzinfo=None)
     since = ts - timedelta(days=LOOKBACK_DAYS)
 
@@ -92,7 +93,12 @@ def run(
     client = qwen_client or (
         _DryRunFallbackQwenClient() if dry_run else QwenClient.from_env()
     )
-    agent = StoryHypothesisAgent(qwen_client=client)
+    agent = StoryHypothesisAgent(
+        qwen_client=client,
+        model_name=runtime_settings.qwen_model,
+        adapter_name=runtime_settings.maps_adapter_name,
+        adapter_path=runtime_settings.maps_adapter_path,
+    )
 
     weak_signals = _fetch_weak_signals(
         reader,

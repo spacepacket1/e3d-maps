@@ -6,9 +6,15 @@ set -euo pipefail
 E3D_DIR="/Users/mini/clawd/e3d"
 MAPS_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TRAIN_DIR="${MAPS_DIR}/training"
+APP_PYTHON="${APP_PYTHON:-/opt/homebrew/bin/python3}"
 
 cd "${E3D_DIR}"
 source .venv/bin/activate
+set -a
+if [[ -f "${MAPS_DIR}/deploy/ai.e3d.maps-runner.env" ]]; then
+  source "${MAPS_DIR}/deploy/ai.e3d.maps-runner.env"
+fi
+set +a
 
 AGENT="maps"
 CONFIG="${TRAIN_DIR}/train_config_maps_v1.yaml"
@@ -30,7 +36,14 @@ log "Start time: ${START_TS}"
 # ─── Step 1: Export training data ────────────────────────────────────────────
 
 log "Exporting Maps training examples..."
-python3 "${MAPS_DIR}/jobs/export_training_examples.py" --output "${DATA_DIR}"
+EXPORT_PATH="${TRAIN_DIR}/exports/maps_training_examples_$(date -u +%Y%m%d).jsonl"
+PYTHONPATH="${MAPS_DIR}" "${APP_PYTHON}" "${MAPS_DIR}/jobs/export_training_examples.py" --output-path "${EXPORT_PATH}" --signal-limit 5000
+
+log "Preparing MLX LoRA dataset..."
+"${APP_PYTHON}" "${TRAIN_DIR}/prepare_maps_lora_data.py" \
+  --input-dir "${TRAIN_DIR}/exports" \
+  --output "${DATA_DIR}" \
+  --min-accuracy "${MAPS_TRAIN_MIN_ACCURACY:-0.6}"
 
 # ─── Step 2: Validate data files ─────────────────────────────────────────────
 
@@ -53,28 +66,29 @@ TEST_LINES=0
 
 log "Examples — train: ${TRAIN_LINES}, valid: ${VALID_LINES}, test: ${TEST_LINES}"
 
-# ─── Step 3: Back up existing adapter ────────────────────────────────────────
+# ─── Step 3: Prepare staging dir ─────────────────────────────────────────────
 
-BACKUP_DIR=""
-if [[ -d "${ADAPTER_DIR}" ]]; then
-  BACKUP_DIR="${ADAPTER_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
-  log "Backing up existing adapter to ${BACKUP_DIR}..."
-  cp -r "${ADAPTER_DIR}/" "${BACKUP_DIR}/"
-  log "Backup complete."
-  log "Clearing adapter dir for cold retrain..."
-  rm -rf "${ADAPTER_DIR}"
+STAGING_DIR="${ADAPTER_DIR}.new"
+STAGING_CONFIG="${TRAIN_DIR}/train_config_maps_v1.staging.yaml"
+
+if [[ -d "${STAGING_DIR}" ]]; then
+  log "Removing leftover staging dir ${STAGING_DIR} from a prior aborted run..."
+  rm -rf "${STAGING_DIR}"
 fi
+
+sed "s|^adapter_path:.*|adapter_path: ./${STAGING_DIR}|" "${CONFIG}" > "${STAGING_CONFIG}"
+log "Staging config: ${STAGING_CONFIG} (adapter_path -> ./${STAGING_DIR})"
 
 # ─── Step 4: Train ───────────────────────────────────────────────────────────
 
-log "Starting LoRA training with config: ${CONFIG}..."
-mlx_lm.lora --config "${CONFIG}"
+log "Starting LoRA training with config: ${STAGING_CONFIG}..."
+mlx_lm.lora --config "${STAGING_CONFIG}"
 log "Training finished."
 
 # ─── Step 5: Evaluate ────────────────────────────────────────────────────────
 
 log "Running evaluation on test set..."
-EVAL_OUTPUT=$(mlx_lm.lora --config "${CONFIG}" --test 2>&1)
+EVAL_OUTPUT=$(mlx_lm.lora --config "${STAGING_CONFIG}" --test 2>&1)
 log "Eval output:"
 printf "%s\n" "${EVAL_OUTPUT}"
 
@@ -109,16 +123,23 @@ print('yes' if new > prev * 1.05 else 'no')
 
   if [[ "${REGRESSED}" == "yes" ]]; then
     log "Regression detected: new loss ${NEW_LOSS} > prev loss ${PREV_LOSS} by more than 5%."
-    if [[ -n "${BACKUP_DIR}" && -d "${BACKUP_DIR}" ]]; then
-      log "Restoring backup adapter from ${BACKUP_DIR}..."
-      rm -rf "${ADAPTER_DIR}"
-      cp -r "${BACKUP_DIR}/" "${ADAPTER_DIR}/"
-      log "Rollback complete."
-    else
-      log "No backup available to restore."
-    fi
+    log "Discarding staged adapter; live ${ADAPTER_DIR} is untouched."
+    rm -rf "${STAGING_DIR}"
+    rm -f "${STAGING_CONFIG}"
     STATUS="rolled_back"
   fi
+fi
+
+if [[ "${STATUS}" == "ok" ]]; then
+  if [[ -d "${ADAPTER_DIR}" ]]; then
+    BACKUP_DIR="${ADAPTER_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
+    log "Renaming current live adapter to ${BACKUP_DIR}..."
+    mv "${ADAPTER_DIR}" "${BACKUP_DIR}"
+  fi
+  log "Promoting ${STAGING_DIR} -> ${ADAPTER_DIR}..."
+  mv "${STAGING_DIR}" "${ADAPTER_DIR}"
+  rm -f "${STAGING_CONFIG}"
+  log "Adapter promotion complete."
 fi
 
 # ─── Step 7: Write training run metadata ─────────────────────────────────────
