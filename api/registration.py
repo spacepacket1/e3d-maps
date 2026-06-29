@@ -1,4 +1,4 @@
-"""Registration endpoint handler — issue API keys against on-chain subscriptions."""
+"""Registration endpoint handler — issue API keys from local entitlement snapshots."""
 from __future__ import annotations
 
 import re
@@ -35,19 +35,29 @@ def post_register(store: ApiKeyStore, payload: dict[str, Any]) -> RegisterRespon
         )
 
     try:
-        raw_key, tier = store.register(wallet_address)
+        result = store.register(wallet_address)
     except AuthError as exc:
+        error_body = {"status": "error", "error": str(exc)}
+        if exc.error_code:
+            error_body["code"] = exc.error_code
         return RegisterResponse(
             status_code=exc.status_code,
-            body={"status": "error", "error": str(exc)},
+            body=error_body,
         )
 
     return RegisterResponse(
         status_code=201,
         body={
             "status": "ok",
-            "api_key": raw_key,
-            "tier": TIER_NAMES.get(tier, "unknown"),
+            "api_key": result.raw_key,
+            "tier": TIER_NAMES.get(result.subscription_tier, "entitled"),
+            "capabilities": result.capabilities,
+            "discount_source": result.discount_source,
+            "capabilities_expires_at": (
+                result.capabilities_expires_at.isoformat().replace("+00:00", "Z")
+                if result.capabilities_expires_at
+                else None
+            ),
             "note": (
                 "Store this key securely — it will not be shown again. "
                 "Send it as: Authorization: Bearer <api_key>"

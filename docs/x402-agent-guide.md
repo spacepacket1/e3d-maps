@@ -9,9 +9,11 @@ E3D Maps navigation intelligence is available to autonomous agents via per-call 
 ```
 Agent → buys E3D on Uniswap (mainnet)
       → bridges wE3D to Base via Wormhole
-        → transfers wE3D to E3D Maps treasury on Base
-          → registers credits at POST /api/maps/credits
-            → makes API calls with Authorization: Bearer <key>
+        → requests a quote from E3D payments
+          → transfers wE3D on Base to the quoted treasury address
+            → registers the funding tx at POST /api/payments/credits/purchase
+              → receives an e3d_maps_pay_... key
+                → makes API calls with Authorization: Bearer <key>
 ```
 
 Every credit purchase is an on-chain Base transaction. This creates verifiable E3D token velocity.
@@ -49,7 +51,42 @@ Alternatively, use any Wormhole-compatible bridge UI (e.g., Portal Bridge) to br
 
 ### 3. Transfer wE3D to the Treasury
 
-Send wrapped E3D from your Base wallet to the E3D Maps treasury:
+Request a quote from E3D payments before transferring funds:
+
+```bash
+curl -X POST https://e3d.ai/api/payments/credits/quote \
+  -H "Authorization: Bearer $E3D_AGENT_SERVICE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "product": "maps",
+    "wallet": "0xYourBaseWalletAddress",
+    "requestedIssuedCredits": 1000,
+    "promotionCode": "FIRST_100_AGENTS"
+  }'
+```
+
+Example response:
+
+```json
+{
+  "product": "maps",
+  "wallet": "0xyourbasewalletaddress",
+  "requestedIssuedCredits": 1000,
+  "requiredBaseCredits": 100,
+  "requiredWE3D": "0.1",
+  "appliedDiscountBps": 9000,
+  "discountSource": "FIRST_100_AGENTS",
+  "payment": {
+    "chain": "base",
+    "chainId": 8453,
+    "token": "wE3D",
+    "tokenAddress": "0x<wrappedE3D>",
+    "treasuryAddress": "0x<treasury>"
+  }
+}
+```
+
+Then send wrapped E3D from your Base wallet to the quoted treasury address on Base:
 
 - **Treasury address**: `0x<MAPS_TREASURY_ADDRESS>` *(set after deployment)*
 - **Token**: wrapped E3D on Base (`WRAPPED_E3D_BASE_ADDRESS`)
@@ -61,22 +98,24 @@ This is a standard ERC-20 transfer — use any Base-compatible wallet or your ag
 const provider = new ethers.providers.JsonRpcProvider(BASE_RPC_URL);
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 const token = new ethers.Contract(WRAPPED_E3D_BASE_ADDRESS, ['function transfer(address,uint256) returns (bool)'], wallet);
-const tx = await token.transfer(MAPS_TREASURY_ADDRESS, ethers.utils.parseUnits('1.0', 18));
+const tx = await token.transfer(quote.payment.treasuryAddress, ethers.utils.parseUnits(quote.requiredWE3D, 18));
 await tx.wait();
 // Save tx.hash for step 4
 ```
 
-### 4. Register Credits
+### 4. Register Credit Purchase
 
-Post the transaction hash to receive your API key:
+Post the Base transaction hash to E3D payments to receive your product-scoped API key:
 
 ```bash
-curl -X POST https://maps.e3d.ai/api/maps/credits \
+curl -X POST https://e3d.ai/api/payments/credits/purchase \
+  -H "Authorization: Bearer $E3D_AGENT_SERVICE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
+    "product": "maps",
     "wallet": "0xYourBaseWalletAddress",
-    "tx_hash": "0xYourBaseTxHash",
-    "agent_tier": 0
+    "txHash": "0xYourBaseTxHash",
+    "promotionCode": "FIRST_100_AGENTS"
   }'
 ```
 
@@ -84,9 +123,10 @@ Response:
 ```json
 {
   "status": "ok",
-  "api_key": "abc123...",
-  "credits_issued": 1000,
-  "credit_rate": "1 credit = 0.001 wE3D",
+  "product": "maps",
+  "creditKey": "e3d_maps_pay_abc123...",
+  "issuedCredits": 1000,
+  "creditRate": "1 credit = 0.001 wE3D before discounts",
   "usage": "Send as: Authorization: Bearer <api_key>"
 }
 ```
@@ -99,15 +139,19 @@ Include your API key on every paid request:
 
 ```bash
 curl https://maps.e3d.ai/api/maps/signals \
-  -H "Authorization: Bearer abc123..."
+  -H "Authorization: Bearer e3d_maps_pay_abc123..."
 ```
 
 Or use the `X-Payment-Key` header:
 
 ```bash
 curl https://maps.e3d.ai/api/maps/signals \
-  -H "X-Payment-Key: abc123..."
+  -H "X-Payment-Key: e3d_maps_pay_abc123..."
 ```
+
+### Subscription API keys remain separate
+
+`POST /api/maps/register` is still the Maps subscription auth path for rate-limited access. It issues subscription API keys managed by `e3d-maps` and is unaffected by the prepaid credit migration described here.
 
 ---
 
@@ -137,20 +181,21 @@ Activate an agent identity NFT on [E3DNFTManager](https://etherscan.io/address/0
 
 ## Credit Balance
 
-Check remaining credits:
+Check remaining credits through E3D payments:
 
 ```bash
-curl https://maps.e3d.ai/api/maps/credits \
-  -H "Authorization: Bearer abc123..."
+curl "https://e3d.ai/api/payments/credits/balance?product=maps" \
+  -H "Authorization: Bearer e3d_maps_pay_abc123..."
 ```
 
 Response:
 ```json
 {
+  "product": "maps",
   "credits": 850,
   "wallet": "0x...",
-  "agent_tier": 0,
-  "credit_rate": "1 credit = 0.001 wE3D"
+  "agentTier": 0,
+  "creditRate": "1 credit = 0.001 wE3D before discounts"
 }
 ```
 
@@ -186,7 +231,8 @@ When payment is missing or credits are exhausted, the server returns HTTP 402:
       "minPurchase": "500 credits"
     }
   }],
-  "purchasePath": "POST /api/maps/credits"
+  "purchasePath": "POST /api/payments/credits/purchase",
+  "product": "maps"
 }
 ```
 
@@ -206,7 +252,9 @@ openclaw agents can add E3D Maps as a paid data source by registering credits on
         "keyEnvVar": "E3D_MAPS_API_KEY"
       },
       "paymentScheme": "x402-prepay",
-      "creditPurchaseUrl": "https://maps.e3d.ai/api/maps/credits"
+      "creditPurchaseUrl": "https://e3d.ai/api/payments/credits/purchase",
+      "creditQuoteUrl": "https://e3d.ai/api/payments/credits/quote",
+      "product": "maps"
     }
   }
 }
@@ -218,22 +266,30 @@ Set `E3D_MAPS_API_KEY` in the openclaw runtime environment after purchasing cred
 
 ## Replenishing Credits
 
-When credits run low, repeat steps 3–4: transfer more wE3D to the treasury and register the new transaction. A new API key is issued; your old key is still valid until its balance hits zero.
+When credits run low, repeat steps 3–4: request a new quote, transfer more wE3D to the quoted treasury address, and register the new transaction with `product: "maps"`. A new API key is issued; your old key is still valid until its balance hits zero.
 
 To automate replenishment in your agent:
 
 ```js
 async function ensureCredits(minBalance = 100) {
-  const res = await fetch('https://maps.e3d.ai/api/maps/credits', {
-    headers: { 'Authorization': `Bearer ${process.env.E3D_MAPS_API_KEY}` }
+  const res = await fetch('https://e3d.ai/api/payments/credits/balance?product=maps', {
+    headers: { 'Authorization': `Bearer ${process.env.E3D_MAPS_CREDIT_KEY}` }
   });
   const { credits } = await res.json();
   if (credits < minBalance) {
-    // trigger wE3D transfer to treasury and re-register
+    // request quote, transfer wE3D on Base, then POST /api/payments/credits/purchase
     await purchaseCredits();
   }
 }
 ```
+
+## Deprecation Note
+
+Legacy `/api/maps/credits` examples referred to an older Maps-specific alias. Use the E3D payment endpoints for new integrations:
+
+- `POST /api/payments/credits/quote`
+- `POST /api/payments/credits/purchase`
+- `GET /api/payments/credits/balance?product=maps`
 
 ---
 

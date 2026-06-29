@@ -530,10 +530,10 @@ def _validate_supporting_references(
 
 
 def _validate_model_brief_shape(brief: MapsNewsBrief) -> None:
-    if not 60 <= len(brief.headline) <= 120:
-        raise ValueError("headline must be 60-120 characters")
-    if not 160 <= len(brief.summary) <= 420:
-        raise ValueError("summary must be 160-420 characters")
+    if not 20 <= len(brief.headline) <= 160:
+        raise ValueError("headline must be 20-160 characters")
+    if not 80 <= len(brief.summary) <= 600:
+        raise ValueError("summary must be 80-600 characters")
     if not 1 <= len(brief.tags) <= 6:
         raise ValueError("tags must contain 1 to 6 items")
 

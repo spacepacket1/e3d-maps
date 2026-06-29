@@ -183,8 +183,16 @@ class MapsRunner:
             clickhouse = self._clickhouse_for_cycle(dry_run=dry_run)
             result = RunnerCycleResult()
 
+            enabled_seen = 0
             for question in queue:
                 if not question.enabled:
+                    result = self._replace_result(
+                        result,
+                        skipped_questions=result.skipped_questions + 1,
+                    )
+                    continue
+                enabled_seen += 1
+                if enabled_seen > self.runner_settings.max_questions_per_cycle:
                     result = self._replace_result(
                         result,
                         skipped_questions=result.skipped_questions + 1,

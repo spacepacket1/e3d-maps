@@ -1,0 +1,17 @@
+model: mlx-community/Qwen2.5-7B-Instruct-4bit
+train: true
+data: /Users/mini/clawd/e3d/data
+adapter_path: /Users/mini/clawd/e3d/adapters_story_v1.new
+fine_tune_type: lora
+batch_size: 1
+iters: 500
+learning_rate: 5e-6
+save_every: 100
+steps_per_report: 10
+steps_per_eval: 100
+max_seq_length: 1024
+grad_checkpoint: true
+lora_parameters:
+  rank: 8
+  dropout: 0.0
+  scale: 20.0

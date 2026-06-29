@@ -1,9 +1,19 @@
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Callable, Sequence
+
+
+def _env_flag(name: str, *, default: bool = True) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 @dataclass
@@ -101,6 +111,29 @@ class MapsJobScheduler:
         while True:
             self.run_once()
             self._sleep_fn(float(self.tick_seconds))
+
+    def load_state(self, path: str | Path) -> None:
+        state_path = Path(path)
+        if not state_path.exists():
+            return
+        try:
+            payload = json.loads(state_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return
+        if not isinstance(payload, dict):
+            return
+        for job in self.jobs:
+            raw_last_run = payload.get(job.name)
+            if isinstance(raw_last_run, (int, float)):
+                job._last_run = float(raw_last_run)
+
+    def save_state(self, path: str | Path) -> None:
+        state_path = Path(path)
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {job.name: job._last_run for job in self.jobs}
+        tmp_path = state_path.with_suffix(f"{state_path.suffix}.tmp")
+        tmp_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+        tmp_path.replace(state_path)
 
     @classmethod
     def from_runner_and_jobs(
@@ -336,7 +369,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         traffic_state_fn=lambda: traffic_state_mod.run(dry_run=dry_run),
         cross_chain_activity_fn=lambda: cross_chain_mod.run(dry_run=dry_run),
         maps_news_fn=lambda: maps_news_mod.run(dry_run=dry_run),
-        watch_fn=lambda: watch_mod.run(dry_run=dry_run),
+        watch_fn=(
+            (lambda: watch_mod.run(dry_run=dry_run))
+            if _env_flag("MAPS_WATCH_AGENT_ENABLED", default=True)
+            else None
+        ),
         query_demand_fn=lambda: query_demand_mod.run(dry_run=dry_run),
         reflexivity_fn=lambda: reflexivity_mod.run(dry_run=dry_run),
         narrative_velocity_fn=lambda: narrative_velocity_mod.run(dry_run=dry_run),
@@ -366,10 +403,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     if args.once:
+        state_path = os.environ.get(
+            "MAPS_SCHEDULER_STATE_PATH",
+            "/Users/mini/e3d-maps/deploy/run/maps_scheduler_state.json",
+        )
+        scheduler.load_state(state_path)
         result = scheduler.run_once()
+        scheduler.save_state(state_path)
         print(f"Scheduler tick complete: {result.jobs_run} job(s) ran.")
         return 0
 
+    state_path = os.environ.get("MAPS_SCHEDULER_STATE_PATH")
+    if state_path:
+        scheduler.load_state(state_path)
     scheduler.run_loop()
     return 0
 

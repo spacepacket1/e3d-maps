@@ -84,6 +84,7 @@ class MapsRunnerSettings:
     story_hypothesis_interval_seconds: int = 86400
     bridge_synthesis_interval_seconds: int = 360
     scheduler_tick_seconds: int = 60
+    max_questions_per_cycle: int = 8
     use_sample_context: bool = False
     use_sample_responses: bool = False
     min_signal_confidence: float = 0.5
@@ -140,6 +141,7 @@ class MapsRunnerSettings:
                 env.get("MAPS_BRIDGE_SYNTHESIS_INTERVAL_SECONDS") or 360
             ),
             scheduler_tick_seconds=int(env.get("MAPS_SCHEDULER_TICK_SECONDS") or 60),
+            max_questions_per_cycle=int(env.get("MAPS_MAX_QUESTIONS_PER_CYCLE") or 8),
             use_sample_context=_parse_bool(env.get("MAPS_RUNNER_USE_SAMPLE_CONTEXT")),
             use_sample_responses=_parse_bool(env.get("MAPS_RUNNER_USE_SAMPLE_RESPONSES")),
             min_signal_confidence=float(env.get("MAPS_MIN_SIGNAL_CONFIDENCE") or 0.5),

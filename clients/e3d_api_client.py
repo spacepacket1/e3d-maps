@@ -13,6 +13,7 @@ class E3DAPIClient(BaseE3DReadClient):
     DEFAULT_TOKEN_ACTIVITY_MAX_ITEMS = 10
     DEFAULT_EXCHANGE_FLOWS_MAX_ITEMS = 10
     DEFAULT_CONTEXT_TOKEN_BUDGET = 20_000
+    DEFAULT_MAX_TOKENS_PER_STORY = 4_000
 
     def __init__(
         self,
@@ -137,13 +138,17 @@ class E3DAPIClient(BaseE3DReadClient):
         exchange_flows_max_items: int = DEFAULT_EXCHANGE_FLOWS_MAX_ITEMS,
         prior_signals: Sequence[Mapping[str, Any]] | None = None,
         token_budget: int = DEFAULT_CONTEXT_TOKEN_BUDGET,
+        max_tokens_per_story: int = DEFAULT_MAX_TOKENS_PER_STORY,
     ) -> dict[str, Any]:
         try:
             market_state = self._get_json(path=self.market_state_path, missing_ok=True) or {}
         except E3DAPIClientError:
             market_state = {}
+        stories = self.get_recent_stories(max_items=stories_max_items)
+        if max_tokens_per_story > 0:
+            stories = [s for s in stories if self._estimate_tokens(s) <= max_tokens_per_story]
         context = {
-            "recent_stories": self.get_recent_stories(max_items=stories_max_items),
+            "recent_stories": stories,
             "recent_theses": self.get_recent_theses(max_items=theses_max_items),
             "wallet_activity": self.get_wallet_activity(max_items=wallet_activity_max_items),
             "token_activity": self.get_token_activity(max_items=token_activity_max_items),

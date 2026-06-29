@@ -1,0 +1,2 @@
+{"ts": "2026-06-22T19:55:39Z", "agent": "maps", "adapter_version": "maps_v1_20260622", "eval_loss": 0.044, "examples_train": 192, "examples_valid": 23, "examples_test": 23, "duration_sec": 4869, "status": "ok"}
+{"ts": "2026-06-23T15:56:52Z", "agent": "story", "adapter_version": "story_v1_7b_20260623", "eval_loss": 0.571, "examples_train": 4500, "examples_valid": 250, "examples_test": 250, "duration_sec": 8962, "status": "ok", "note": "manual promotion after final validation; mlx --test subprocess was stopped after hanging"}
