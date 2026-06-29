@@ -18,12 +18,16 @@ https://maps.e3d.ai/api
 
 ## Authentication
 
-E3D Maps uses x402-compatible prepaid credits in **E3D Token** on **Base L2**.
+E3D Maps uses x402-compatible prepaid credits in **E3D Token** on **Base L2** through E3D's product payments API.
 
 1. Buy E3D on Uniswap: `0x6488861b401F427D13B6619C77C297366bCf6386` (Ethereum mainnet)
 2. Bridge to Base via Wormhole
-3. Transfer wrapped E3D to treasury → POST /api/maps/credits → receive API key
-4. Send `Authorization: Bearer <key>` on all paid calls
+3. Request a quote: `POST /api/payments/credits/quote` with `product: "maps"`
+4. Transfer wrapped E3D on Base to the quoted treasury address
+5. Register the purchase: `POST /api/payments/credits/purchase` with `product: "maps"` and the Base `tx_hash`
+6. Receive an `e3d_maps_pay_...` key and send `Authorization: Bearer <key>` on paid calls
+
+`POST /api/maps/register` remains a separate subscription auth path for rate-limited Maps access and is unaffected by this payment migration.
 
 Full guide: https://maps.e3d.ai/docs/x402-agent-guide
 
@@ -59,8 +63,9 @@ Full guide: https://maps.e3d.ai/docs/x402-agent-guide
 
 ## Credit Management
 
-- GET /api/maps/credits — check credit balance (requires API key)
-- POST /api/maps/credits — purchase credits with a Base tx hash
+- POST /api/payments/credits/quote — quote a Maps credit purchase; include `product: "maps"`
+- POST /api/payments/credits/purchase — register a Base funding transaction; include `product: "maps"`
+- GET /api/payments/credits/balance?product=maps — check remaining Maps credits (requires API key)
 
 Credit rate: 1 credit = 0.001 wE3D. Minimum purchase: 500 credits (0.5 wE3D).
 
@@ -68,7 +73,7 @@ Response headers: X-Credits-Remaining, X-Credits-Used
 
 ## x402 Payment Protocol
 
-On missing/insufficient payment, the server returns HTTP 402 with an `accepts` array describing payment requirements. The `purchasePath` field specifies where to register a credit-funding Base transaction.
+On missing or insufficient payment, the server returns HTTP 402 with an `accepts` array describing payment requirements. The `purchasePath` field points to `POST /api/payments/credits/purchase` for credit-funding Base transactions. Payment examples should always specify `product: "maps"`.
 
 ## Agent Identity & Discounts
 
@@ -87,8 +92,13 @@ Pass `agent_tier` when registering credits to apply the discount.
     "e3d-maps": {
       "baseUrl": "https://maps.e3d.ai/api",
       "auth": { "type": "bearer", "keyEnvVar": "E3D_MAPS_API_KEY" },
-      "paymentScheme": "x402-prepay"
+      "paymentScheme": "x402-prepay",
+      "product": "maps"
     }
   }
 }
 ```
+
+## Deprecation Note
+
+Legacy `/api/maps/credits` references are compatibility aliases only. New integrations should use `/api/payments/credits/*` with `product: "maps"`.
