@@ -2,7 +2,7 @@
 
 Flow:
   1. Caller POSTs wallet_address to /api/maps/register.
-  2. Server resolves Maps capabilities from e3d, falling back to active subscription checks.
+  2. Server resolves Maps capabilities from e3d via the entitlements resolver.
   3. Server issues a 256-bit bearer token and stores its SHA-256 hash in ClickHouse.
   4. Caller sends Authorization: Bearer <token> on all subsequent requests.
   5. verify() resolves the token locally and enforces the stored capability snapshot.
@@ -14,14 +14,13 @@ import json
 import secrets
 import time
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 if TYPE_CHECKING:
     from clients.clickhouse_client import ClickHouseClient
-    from clients.nft_manager_client import NFTManagerClient
 
 # Hourly request limits by subscription tier (0=none, 1=monthly, 2=annual)
 RATE_LIMITS: dict[int, int] = {
@@ -31,7 +30,6 @@ RATE_LIMITS: dict[int, int] = {
 }
 
 TIER_NAMES = {1: "monthly", 2: "annual"}
-LEGACY_CAPABILITIES_TTL = timedelta(days=1)
 
 
 class AuthError(Exception):
@@ -163,13 +161,11 @@ class ApiKeyStore:
     def __init__(
         self,
         clickhouse: ClickHouseClient,
-        nft: NFTManagerClient,
         *,
-        entitlements: EntitlementResolverClient | Any | None = None,
+        entitlements: EntitlementResolverClient | Any,
         now=None,
     ) -> None:
         self.ch = clickhouse
-        self.nft = nft
         self.entitlements = entitlements
         self._now = now or (lambda: datetime.now(UTC))
         # In-memory sliding-window rate tracker: key_hash → sorted list of request timestamps
@@ -269,44 +265,34 @@ class ApiKeyStore:
         )
 
     def _resolve_snapshot(self, wallet_address: str) -> CapabilitySnapshot:
-        if self.entitlements is not None:
-            try:
-                resolved = self.entitlements.resolve(wallet_address)
-            except EntitlementResolverError:
-                resolved = None
-            if isinstance(resolved, dict):
-                capabilities = resolved.get("capabilities")
-                if isinstance(capabilities, dict) and capabilities.get("mapsApiKeyEligible"):
-                    evidence = resolved.get("evidence") if isinstance(resolved.get("evidence"), dict) else {}
-                    subscription = evidence.get("subscription") if isinstance(evidence.get("subscription"), dict) else {}
-                    return CapabilitySnapshot(
-                        subscription_tier=int(subscription.get("tier", 0) or 0),
-                        capabilities=dict(capabilities),
-                        discount_source=str(
-                            resolved.get("discountSource")
-                            or capabilities.get("discountSource")
-                            or "base_price"
-                        ),
-                        capabilities_expires_at=self._parse_datetime(resolved.get("capabilitiesExpiresAt")),
-                    )
+        try:
+            resolved = self.entitlements.resolve(wallet_address)
+        except EntitlementResolverError as exc:
+            raise AuthError(
+                "Unable to resolve E3D entitlements for this wallet. Try again shortly.",
+                503,
+                error_code="ENTITLEMENTS_UNAVAILABLE",
+            ) from exc
 
-        tier = self.nft.get_subscription_tier(wallet_address)
-        if tier == 0:
+        capabilities = resolved.get("capabilities") if isinstance(resolved, dict) else None
+        if not isinstance(capabilities, dict) or not capabilities.get("mapsApiKeyEligible"):
             raise AuthError(
                 "No active E3D entitlement found for this wallet. "
                 "Subscribe or claim an eligible promotion before issuing a Maps API key.",
                 402,
             )
+
+        evidence = resolved.get("evidence") if isinstance(resolved.get("evidence"), dict) else {}
+        subscription = evidence.get("subscription") if isinstance(evidence.get("subscription"), dict) else {}
         return CapabilitySnapshot(
-            subscription_tier=tier,
-            capabilities={
-                "mapsApiKeyEligible": True,
-                "mapsHourlyLimit": RATE_LIMITS.get(tier, 0),
-                "mapsX402DiscountBps": 0,
-                "discountSource": "active_subscription",
-            },
-            discount_source="active_subscription",
-            capabilities_expires_at=self._now() + LEGACY_CAPABILITIES_TTL,
+            subscription_tier=int(subscription.get("tier", 0) or 0),
+            capabilities=dict(capabilities),
+            discount_source=str(
+                resolved.get("discountSource")
+                or capabilities.get("discountSource")
+                or "base_price"
+            ),
+            capabilities_expires_at=self._parse_datetime(resolved.get("capabilitiesExpiresAt")),
         )
 
     def _write_key_row(
