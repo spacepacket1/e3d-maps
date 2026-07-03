@@ -149,10 +149,6 @@ curl https://maps.e3d.ai/api/maps/signals \
   -H "X-Payment-Key: e3d_maps_pay_abc123..."
 ```
 
-### Subscription API keys remain separate
-
-`POST /api/maps/register` is still the Maps subscription auth path for rate-limited access. It issues subscription API keys managed by `e3d-maps` and is unaffected by the prepaid credit migration described here.
-
 ---
 
 ## Pricing

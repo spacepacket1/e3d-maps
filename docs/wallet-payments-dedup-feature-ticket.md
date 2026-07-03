@@ -125,7 +125,11 @@ verification.
 - Extracting a shared ERC-20 transfer-verification primitive in
   `spacepacket/server` and migrating both existing callers onto it.
 - Fixing the missing revert-status check surfaced by that extraction.
-- Test coverage for both changes.
+- Removing `e3d-maps`'s local Maps API key issuance/verification system
+  (`ApiKeyStore`, `POST /api/maps/register`) entirely — confirmed via production
+  ClickHouse that the `maps_api_keys` table it depends on was never created, so
+  there is no live data or subscriber to migrate.
+- Test coverage for all of the above.
 
 ### Out of scope (tracked separately, not part of this ticket)
 
@@ -242,26 +246,77 @@ Repo:
 
 ---
 
-## 6. Test Plan
+## 6. Phase 3 — Remove `e3d-maps`'s local Maps API key system entirely
 
-- `e3d-maps`: `.venv/bin/python -m pytest tests/unit/ -q` — full suite, with
-  particular attention to `test_auth.py`.
+Repo:
+
+```text
+/home/ubuntu/e3d-maps
+```
+
+Confirmed via direct production ClickHouse query that `maps_api_keys` was never created
+(`SHOW TABLES LIKE '%api_key%'` returns nothing), so `ApiKeyStore.register()` /
+`verify()` could never have succeeded against real infrastructure. There is no
+subscriber data to migrate — this is a clean deletion, not a cutover with a
+transition period. The public `/api/maps/...` surface on `maps.e3d.ai` is served
+by `spacepacket/server` (`x402MapsMiddleware.js` / `mapsNavigationRoutes.js`)
+directly against the shared `product_api_credits` / x402 credit-key system, not by
+any code in this repo — so this repo's local subscription-tier key system was
+dead weight, not a second live auth path.
+
+### What to build
+
+- Delete `api/auth.py` (`ApiKeyStore`, `EntitlementResolverClient`, `AuthError`,
+  `RateLimitError`, and related dataclasses) in full.
+- Delete `api/registration.py` (`post_register`) in full.
+- Delete `tests/unit/test_auth.py` in full.
+- Delete `db/migrations/0006_add_api_keys_table.sql` and
+  `db/migrations/0010_add_api_key_capabilities_snapshot.sql` — both define/alter
+  `maps_api_keys`, which does not exist in production and has no dependents once
+  the above is removed.
+- Remove the "Subscription API keys remain separate" section from
+  `docs/x402-agent-guide.md` (previously described `POST /api/maps/register` as a
+  still-live auth path — no longer true).
+- Confirm no other module imports from `api.auth` / `api.registration` before
+  deleting (`grep -rln "maps_api_keys\|ApiKeyStore\|api\.auth\|api\.registration"`).
+
+### Acceptance Criteria
+
+- `api/auth.py`, `api/registration.py`, and `tests/unit/test_auth.py` no longer
+  exist in the repo.
+- Full test suite passes with no collection errors:
+  `.venv/bin/python -m pytest tests/unit/ -q` (test count drops by exactly the 16
+  tests that lived in the deleted `test_auth.py`; no other test references the
+  deleted modules).
+- `grep -rln "maps_api_keys\|ApiKeyStore\|api\.auth\|api\.registration\|EntitlementResolverClient"`
+  across `.py`/`.md` files returns no matches outside this ticket doc.
+
+### Verification
+
+- Repo-wide grep sweep (above) confirms nothing else depends on the deleted code.
+- Test suite run confirms no regressions beyond the removed tests.
+
+---
+
+## 7. Test Plan
+
+- `e3d-maps`: `.venv/bin/python -m pytest tests/unit/ -q` — full suite.
 - `spacepacket/server`: existing Node test suite (`productPaymentsService.test.js`,
   `productPaymentsRoutes.test.js`, `entitlementsRoutes.test.js`, agent routes tests),
   plus the two new tests described in Phase 2 (reverted-tx rejection, successful
   escrow funding unaffected).
-- No new integration/E2E environment is required — both phases are covered by
+- No new integration/E2E environment is required — all three phases are covered by
   existing unit-test infrastructure in each repo.
 
-## 7. Open Questions
+## 8. Open Questions
 
-1. **Resolver downtime behavior.** Phase 1 makes `e3d-maps` registration hard-fail
-   when `/api/entitlements/resolve` is unreachable, instead of degrading to a direct
-   chain read. Is that acceptable, or does `e3d-maps` need retry/backoff or a short
-   local cache in front of the resolver call to reduce sensitivity to transient
-   resolver blips? (`e3d-agent`/`e3d-cast` have no fallback either, so hard-fail is at
-   least consistent with the rest of the ecosystem.)
-2. **Existing escrow-funding callers.** Confirm there are no other undiscovered
-   callers of `verifyE3DTransferToEscrow` outside `agentRoutes.js` before Phase 2
-   lands (a repo-wide grep was done as part of this audit and found none, but should
-   be re-checked at implementation time in case of concurrent changes).
+1. **Resolver downtime behavior — now more relevant, not less.** Phase 1 already made
+   `e3d-maps` registration hard-fail when `/api/entitlements/resolve` is unreachable
+   instead of degrading to a direct chain read; Phase 3 removes the local key system
+   this resolver call served, but the same "no fallback" posture would apply to
+   whatever calls `/api/entitlements/resolve` going forward on the main e3d gateway
+   for Maps API keys. Still an open call: is hard-fail acceptable, or does something
+   in the ecosystem need retry/backoff in front of that resolver call?
+2. **Existing escrow-funding callers.** Resolved — confirmed at Phase 2
+   implementation time that `agentRoutes.js:505,672` are the only callers of
+   `verifyE3DTransferToEscrow`.
