@@ -15,3 +15,4 @@ deploy/*.env
 training/exports/*.jsonl
 training/datasets/*.jsonl
 deploy/logs/
+.e3d-pilot/
