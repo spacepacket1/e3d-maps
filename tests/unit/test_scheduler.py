@@ -198,3 +198,45 @@ def test_scheduler_uses_configured_intervals():
 
     assert scheduler.jobs[0].interval_seconds == 60
     assert scheduler.jobs[1].interval_seconds == 120
+
+
+def test_from_runner_and_jobs_includes_settlement():
+    settlement_calls: list[None] = []
+
+    scheduler = MapsJobScheduler.from_runner_and_jobs(
+        runner_fn=lambda: None,
+        scorer_fn=lambda: None,
+        settlement_fn=lambda: settlement_calls.append(None),
+    )
+
+    names = [j.name for j in scheduler.jobs]
+    assert names == [
+        "generate_navigation_signals",
+        "score_pending_predictions",
+        "settle_watch_predictions",
+    ]
+
+    result = scheduler.run_once()
+    assert result.jobs_run == 3
+    assert len(settlement_calls) == 1
+
+
+def test_from_runner_and_jobs_settlement_uses_configured_interval():
+    scheduler = MapsJobScheduler.from_runner_and_jobs(
+        runner_fn=lambda: None,
+        settlement_fn=lambda: None,
+        settlement_interval=900,
+    )
+
+    settlement_job = next(j for j in scheduler.jobs if j.name == "settle_watch_predictions")
+    assert settlement_job.interval_seconds == 900
+
+
+def test_from_runner_and_jobs_omits_settlement_when_not_provided():
+    scheduler = MapsJobScheduler.from_runner_and_jobs(
+        runner_fn=lambda: None,
+        scorer_fn=lambda: None,
+    )
+
+    names = [j.name for j in scheduler.jobs]
+    assert "settle_watch_predictions" not in names

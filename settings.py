@@ -68,6 +68,7 @@ class MapsRunnerSettings:
     question_queue_path: str | None = None
     run_interval_seconds: int = 300
     scoring_interval_seconds: int = 1800
+    settlement_interval_seconds: int = 1800
     utility_interval_seconds: int = 3600
     export_interval_seconds: int = 86400
     flow_graph_interval_seconds: int = 300
@@ -113,6 +114,7 @@ class MapsRunnerSettings:
             question_queue_path=env.get("MAPS_QUESTION_QUEUE_PATH") or None,
             run_interval_seconds=int(env.get("MAPS_RUNNER_INTERVAL_SECONDS") or 300),
             scoring_interval_seconds=int(env.get("MAPS_SCORING_INTERVAL_SECONDS") or 1800),
+            settlement_interval_seconds=int(env.get("MAPS_SETTLEMENT_INTERVAL_SECONDS") or 1800),
             utility_interval_seconds=int(env.get("MAPS_UTILITY_INTERVAL_SECONDS") or 3600),
             export_interval_seconds=int(env.get("MAPS_EXPORT_INTERVAL_SECONDS") or 86400),
             flow_graph_interval_seconds=int(env.get("MAPS_FLOW_GRAPH_INTERVAL_SECONDS") or 300),

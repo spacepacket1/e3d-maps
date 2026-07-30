@@ -47,6 +47,7 @@ class MapsJobScheduler:
 
       - generate_navigation_signals: every 5 minutes
       - score_pending_predictions:   every 30 minutes
+      - settle_watch_predictions:    every 30 minutes
       - compute_signal_utility_scores: every 60 minutes
       - export_training_examples:    every 24 hours
       - assemble_cross_chain_activity: every 5 minutes
@@ -58,6 +59,7 @@ class MapsJobScheduler:
 
     DEFAULT_SIGNALS_INTERVAL = 300
     DEFAULT_SCORING_INTERVAL = 1800
+    DEFAULT_SETTLEMENT_INTERVAL = 1800
     DEFAULT_UTILITY_INTERVAL = 3600
     DEFAULT_EXPORT_INTERVAL = 86400
     DEFAULT_FLOW_GRAPH_INTERVAL = 300
@@ -141,6 +143,7 @@ class MapsJobScheduler:
         *,
         runner_fn: Callable[[], None],
         scorer_fn: Callable[[], None] | None = None,
+        settlement_fn: Callable[[], None] | None = None,
         utility_fn: Callable[[], None] | None = None,
         export_fn: Callable[[], None] | None = None,
         flow_graph_fn: Callable[[], None] | None = None,
@@ -158,6 +161,7 @@ class MapsJobScheduler:
         bridge_synthesis_fn: Callable[[], None] | None = None,
         signals_interval: int = DEFAULT_SIGNALS_INTERVAL,
         scoring_interval: int = DEFAULT_SCORING_INTERVAL,
+        settlement_interval: int = DEFAULT_SETTLEMENT_INTERVAL,
         utility_interval: int = DEFAULT_UTILITY_INTERVAL,
         export_interval: int = DEFAULT_EXPORT_INTERVAL,
         flow_graph_interval: int = DEFAULT_FLOW_GRAPH_INTERVAL,
@@ -190,6 +194,14 @@ class MapsJobScheduler:
                     name="score_pending_predictions",
                     run_fn=scorer_fn,
                     interval_seconds=scoring_interval,
+                )
+            )
+        if settlement_fn is not None:
+            jobs.append(
+                JobConfig(
+                    name="settle_watch_predictions",
+                    run_fn=settlement_fn,
+                    interval_seconds=settlement_interval,
                 )
             )
         if utility_fn is not None:
@@ -328,6 +340,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
 
     import jobs.score_pending_predictions as scorer_mod
+    import jobs.settle_watch_predictions as settlement_mod
     import jobs.compute_signal_utility_scores as utility_mod
     import jobs.export_training_examples as export_mod
     import jobs.assemble_flow_graph as flow_graph_mod
@@ -363,6 +376,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     scheduler = MapsJobScheduler.from_runner_and_jobs(
         runner_fn=lambda: orchestrator.run_maps_cycle(dry_run=dry_run),
         scorer_fn=lambda: scorer_mod.run(dry_run=dry_run),
+        settlement_fn=lambda: settlement_mod.run(dry_run=dry_run),
         utility_fn=lambda: utility_mod.run(dry_run=dry_run),
         export_fn=lambda: export_mod.run(dry_run=dry_run),
         flow_graph_fn=lambda: flow_graph_mod.run(dry_run=dry_run),
@@ -384,6 +398,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         bridge_synthesis_fn=lambda: bridge_synthesis_mod.run(dry_run=dry_run),
         signals_interval=runner_settings.run_interval_seconds,
         scoring_interval=runner_settings.scoring_interval_seconds,
+        settlement_interval=runner_settings.settlement_interval_seconds,
         utility_interval=runner_settings.utility_interval_seconds,
         export_interval=runner_settings.export_interval_seconds,
         flow_graph_interval=runner_settings.flow_graph_interval_seconds,
