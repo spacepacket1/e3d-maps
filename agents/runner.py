@@ -292,7 +292,9 @@ class MapsRunner:
 
     def _load_context(self, *, allow_sample_fallback: bool) -> dict[str, Any]:
         try:
-            context = self.e3d_client.get_market_context()
+            context = self.e3d_client.get_market_context(
+                token_budget=self.runner_settings.navigation_context_token_budget
+            )
             built = {
                 "recent_stories": context.get("recent_stories", []),
                 "recent_theses": context.get("recent_theses", []),

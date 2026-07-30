@@ -90,6 +90,7 @@ class MapsRunnerSettings:
     use_sample_responses: bool = False
     min_signal_confidence: float = 0.5
     min_event_score: int = 60
+    navigation_context_token_budget: int = 20_000
     maps_public_api_base: str = "https://e3d.ai"
     # On-chain payment gating (E3DNFTManager subscription checks)
     eth_rpc_url: str = ""
@@ -148,6 +149,9 @@ class MapsRunnerSettings:
             use_sample_responses=_parse_bool(env.get("MAPS_RUNNER_USE_SAMPLE_RESPONSES")),
             min_signal_confidence=float(env.get("MAPS_MIN_SIGNAL_CONFIDENCE") or 0.5),
             min_event_score=int(env.get("MIN_EVENT_SCORE") or 60),
+            navigation_context_token_budget=int(
+                env.get("MAPS_NAVIGATION_CONTEXT_TOKEN_BUDGET") or 20_000
+            ),
             maps_public_api_base=(
                 env.get("MAPS_PUBLIC_API_BASE") or env.get("E3D_BASE_URL") or "https://e3d.ai"
             ).rstrip("/"),
