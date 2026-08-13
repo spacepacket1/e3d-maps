@@ -281,6 +281,24 @@ button {
   gap: 20px;
 }
 
+.app-footer {
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--panel-border);
+  color: var(--muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.app-footer a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.app-footer a:hover {
+  text-decoration: underline;
+}
+
 .page-header {
   display: flex;
   gap: 16px;

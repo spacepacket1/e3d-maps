@@ -55,6 +55,12 @@ export function Layout({ children, currentPath, navigate, counts = {} }) {
         </nav>
       </header>
       <main className="page-content">${children}</main>
+      <footer className="app-footer">
+        <p>
+          © 2026 FutCo LLC · AI consulting by
+          <a href="https://applied.futco.ai" target="_blank" rel="noreferrer"> Applied FutCo AI</a>
+        </p>
+      </footer>
     </div>
   `;
 }
