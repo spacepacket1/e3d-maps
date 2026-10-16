@@ -85,3 +85,7 @@ Phase 3 adds a narrow Qwen runtime surface:
 - `settings.py` for environment-driven Qwen and adapter configuration
 
 Actual adapter loading remains an explicit stub until the serving infrastructure is defined. The interface is in place so later runner code can adopt real loading without changing callers.
+
+## License
+
+[MIT](LICENSE) © 2026 FutCo LLC. Part of the [FutCo](https://futco.ai/projects) open-source ecosystem.
